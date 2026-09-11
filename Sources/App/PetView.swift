@@ -13,7 +13,10 @@ struct PetView: View {
             sprite
                 .frame(width: model.petPoint, height: model.petPoint)
         }
-        .frame(width: model.panelSize.width, height: model.panelSize.height)
+        // Fill the panel with the sprite at the bottom. A fixed frame the size of
+        // `panelSize` sits at the top of the window for a beat after the panel
+        // grows around the feet, so the pet jumps when the bubble gains a row.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
     }
 
     @ViewBuilder private var bubble: some View {
@@ -38,13 +41,23 @@ struct PetView: View {
     }
 }
 
+/// The pet's bubble is light whatever the system appearance is. It floats over
+/// a desktop the pet does not control, and the same text has to read on a dark
+/// wallpaper as on a bright one.
+private enum BubblePalette {
+    static let fill = Color.white
+    static let border = Color.black.opacity(0.08)
+    static let strongText = Color.black.opacity(0.85)
+    static let softText = Color.black.opacity(0.45)
+}
+
 /// The bubble the pet shows whenever any agent is blocked, working or done:
 /// one row per agent, blocked first, with the rest summarised as "+N more".
 struct AgentListBubble: View {
     let content: AgentBubbleContent
     let highlighted: Set<String>
 
-    private var fill: Color { Color(nsColor: .textBackgroundColor) }
+    private var fill: Color { BubblePalette.fill }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -55,7 +68,7 @@ struct AgentListBubble: View {
                 if content.overflow > 0 {
                     Text("+\(content.overflow) more")
                         .font(.system(size: 10.5))
-                        .foregroundStyle(Color.primary.opacity(0.45))
+                        .foregroundStyle(BubblePalette.softText)
                         .frame(height: PetLayout.lineHeight, alignment: .leading)
                 }
             }
@@ -63,7 +76,7 @@ struct AgentListBubble: View {
             .padding(.vertical, PetLayout.bubbleInsetV)
             .frame(width: PetLayout.bubbleWidth, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: 14).fill(fill))
-            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.primary.opacity(0.08), lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(BubblePalette.border, lineWidth: 1))
             .compositingGroup()
             .shadow(color: .black.opacity(0.18), radius: 5, y: 2)
             BubbleTail()
@@ -84,11 +97,11 @@ private struct AgentBubbleLine: View {
             Circle().fill(row.status.dotColor).frame(width: 6, height: 6)
             Text(row.name)
                 .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(Color.primary.opacity(0.85))
+                .foregroundStyle(BubblePalette.strongText)
                 .lineLimit(1)
             Text("@ \(row.host)")
                 .font(.system(size: 10.5))
-                .foregroundStyle(Color.primary.opacity(0.45))
+                .foregroundStyle(BubblePalette.softText)
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .layoutPriority(-1)
@@ -115,7 +128,7 @@ struct ChatBubble: View {
     var detail: String? = nil
     var compact = false
 
-    private var fill: Color { Color(nsColor: .textBackgroundColor) }
+    private var fill: Color { BubblePalette.fill }
     private var radius: CGFloat { detail == nil ? 999 : 14 }
 
     var body: some View {
@@ -123,13 +136,13 @@ struct ChatBubble: View {
             VStack(spacing: 3) {
                 Text(text)
                     .font(.system(size: compact ? 10.5 : 12, weight: .medium))
-                    .foregroundStyle(Color.primary.opacity(0.85))
+                    .foregroundStyle(BubblePalette.strongText)
                     .lineLimit(1)
                     .truncationMode(.tail)
                 if let detail, !detail.isEmpty {
                     Text(detail)
                         .font(.system(size: 10.5))
-                        .foregroundStyle(Color.primary.opacity(0.45))
+                        .foregroundStyle(BubblePalette.softText)
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
@@ -137,7 +150,7 @@ struct ChatBubble: View {
             .padding(.horizontal, compact ? 8 : 12)
             .padding(.vertical, compact ? 3 : 7)
             .background(RoundedRectangle(cornerRadius: radius).fill(fill))
-            .overlay(RoundedRectangle(cornerRadius: radius).strokeBorder(Color.primary.opacity(0.08), lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: radius).strokeBorder(BubblePalette.border, lineWidth: 1))
             .compositingGroup()
             .shadow(color: .black.opacity(0.18), radius: compact ? 3 : 5, y: 2)
             BubbleTail()

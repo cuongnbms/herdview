@@ -34,7 +34,12 @@ final class PetWindowController: NSObject, NSWindowDelegate {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         // NSHostingView swallows mouse-down, which would block
         // isMovableByWindowBackground. Hit-through lets the panel drag.
-        panel.contentView = HitThroughHostingView(rootView: PetView(model: model))
+        // Empty sizingOptions: we size the panel from `panelSize`; the hosting
+        // view's intrinsic size would otherwise resize it from the top-left
+        // when the bubble gains a row, and the pet would jump.
+        let hosting = HitThroughHostingView(rootView: PetView(model: model))
+        hosting.sizingOptions = []
+        panel.contentView = hosting
         panel.delegate = self
         place()
         sizeCancellable = model.$panelSize.sink { [weak self] size in
@@ -58,7 +63,7 @@ final class PetWindowController: NSObject, NSWindowDelegate {
         guard size.width > 0, size.height > 0, panel.frame.size != size else { return }
         let anchor = NSPoint(x: panel.frame.midX, y: panel.frame.minY)
         let origin = NSPoint(x: anchor.x - size.width / 2, y: anchor.y)
-        panel.setFrame(onScreen(NSRect(origin: origin, size: size)), display: true)
+        panel.setFrame(onScreen(NSRect(origin: origin, size: size)), display: true, animate: false)
     }
 
     private func place() {
@@ -80,15 +85,18 @@ final class PetWindowController: NSObject, NSWindowDelegate {
     }
 
     /// Nudges a frame back inside the screen it mostly sits on, so a pet grown
-    /// at the edge of the display stays reachable.
+    /// at the edge of the display stays reachable. The limit is the screen's
+    /// full frame, not `visibleFrame`: dropping the pet against the very bottom
+    /// of the display, where the Dock lives, must stick instead of bouncing it
+    /// back up on the next resize.
     private func onScreen(_ frame: NSRect) -> NSRect {
         let screen = NSScreen.screens.max { a, b in
             a.frame.intersection(frame).area < b.frame.intersection(frame).area
         } ?? NSScreen.main
-        guard let visible = screen?.visibleFrame else { return frame }
+        guard let bounds = screen?.frame else { return frame }
         var result = frame
-        result.origin.x = min(max(result.minX, visible.minX), max(visible.maxX - result.width, visible.minX))
-        result.origin.y = min(max(result.minY, visible.minY), max(visible.maxY - result.height, visible.minY))
+        result.origin.x = min(max(result.minX, bounds.minX), max(bounds.maxX - result.width, bounds.minX))
+        result.origin.y = min(max(result.minY, bounds.minY), max(bounds.maxY - result.height, bounds.minY))
         return result
     }
 }
