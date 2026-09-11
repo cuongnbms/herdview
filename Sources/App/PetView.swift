@@ -2,21 +2,18 @@ import SwiftUI
 import HerdPetCore
 
 struct PetView: View {
-    static let size = CGSize(width: 240, height: 184)
-    private static let sprite: CGFloat = 110
-    private static let bubbleHeight: CGFloat = 58
-
     @ObservedObject var model: PetModel
 
     var body: some View {
-        VStack(spacing: 2) {
+        VStack(spacing: PetLayout.spacing) {
             bubble
-                .frame(height: Self.bubbleHeight, alignment: .bottom)
+                .frame(maxHeight: .infinity, alignment: .bottom)
                 .animation(.easeInOut(duration: 0.22), value: model.alert)
                 .animation(.easeInOut(duration: 0.22), value: model.moodLine)
-            sprite.frame(width: Self.sprite, height: Self.sprite)
+            sprite
+                .frame(width: model.petPoint, height: model.petPoint)
         }
-        .frame(width: Self.size.width, height: Self.size.height)
+        .frame(width: model.panelSize.width, height: model.panelSize.height)
     }
 
     @ViewBuilder private var bubble: some View {
@@ -39,7 +36,7 @@ struct PetView: View {
         if frames.isEmpty {
             Image(systemName: "pawprint.fill").font(.system(size: 36)).foregroundStyle(.secondary)
         } else {
-            PetSpriteView(frames: frames, fps: model.fps(for: model.mood), size: Self.sprite)
+            PetSpriteView(frames: frames, fps: model.fps(for: model.mood), size: model.petPoint)
         }
     }
 }
@@ -81,10 +78,10 @@ struct ChatBubble: View {
                 .fill(fill)
                 .frame(width: compact ? 9 : 12, height: compact ? 5 : 7)
         }
-        // Hug the text, but let it truncate at the panel's width: the panel is
-        // fixed-size, unlike AgentPet's content-sized bubble window.
+        // Hug the text, but truncate at the bubble's fixed width, which does not
+        // follow the pet's size: a 60pt pet still gets a readable bubble.
         .fixedSize(horizontal: false, vertical: true)
-        .frame(maxWidth: PetView.size.width - 8)
+        .frame(maxWidth: PetLayout.bubbleWidth)
     }
 }
 

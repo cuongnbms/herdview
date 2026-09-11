@@ -2,7 +2,8 @@ import AppKit
 import HerdPetCore
 
 /// What the pet window shows: which pack, the current mood's clip, a chatter
-/// line that follows the mood, and an optional short-lived alert on top.
+/// line that follows the mood, an optional short-lived alert on top, and how
+/// big the whole thing is drawn.
 @MainActor
 final class PetModel: ObservableObject {
     static let alertSeconds: UInt64 = 8
@@ -25,10 +26,31 @@ final class PetModel: ObservableObject {
     @Published private(set) var selectedPetID: String?
     /// The persistent line for the current mood. Empty while working, where the
     /// bubble shows a compact "…" instead.
-    @Published private(set) var moodLine: String = ""
-    @Published private(set) var alert: Alert?
+    @Published private(set) var moodLine: String = "" {
+        didSet { updatePanelSize() }
+    }
+    @Published private(set) var alert: Alert? {
+        didSet { updatePanelSize() }
+    }
+
+    /// The sprite's edge length in points. Clamped to `PetSize`'s range and
+    /// remembered across launches.
+    @Published var petPoint: Double = PetSize.defaultPoint {
+        didSet {
+            let clamped = PetSize.clamp(petPoint)
+            if clamped != petPoint {
+                petPoint = clamped
+                return
+            }
+            UserDefaults.standard.set(petPoint, forKey: Self.petSizeKey)
+            updatePanelSize()
+        }
+    }
+    /// The size the panel must have to hold the sprite and the current bubble.
+    @Published private(set) var panelSize: CGSize = .zero
 
     private static let selectedPetKey = "herdpet.selectedPetID"
+    private static let petSizeKey = "herdpet.petSize"
     private let clips: [Mood: Int]
     private let messages: [Mood: [String]]
     private var pickCounter = Int.random(in: 0..<1_000)
@@ -44,7 +66,11 @@ final class PetModel: ObservableObject {
         let wanted = saved.flatMap { id in packs.contains { $0.id == id } ? id : nil } ?? config.pet
         pack = PetPackLoader.load(id: wanted)
         selectedPetID = pack?.id
+        if let storedSize = defaults.object(forKey: Self.petSizeKey) as? Double {
+            petPoint = PetSize.clamp(storedSize)
+        }
         moodDidChange()
+        updatePanelSize()
     }
 
     // MARK: Pet selection
@@ -72,6 +98,20 @@ final class PetModel: ObservableObject {
 
     func fps(for mood: Mood) -> Double {
         mood == .working ? 6 : 3
+    }
+
+    // MARK: Layout
+
+    /// Lines the bubble draws right now, which is what the panel's height is
+    /// built from. Zero means no bubble at all.
+    private var bubbleLines: Int {
+        if let alert { return alert.detail == nil ? 1 : 2 }
+        if !moodLine.isEmpty { return 1 }
+        return mood == .working ? 1 : 0
+    }
+
+    private func updatePanelSize() {
+        panelSize = PetLayout.panelSize(petPoint: petPoint, bubbleLines: bubbleLines)
     }
 
     // MARK: Bubbles
@@ -110,6 +150,7 @@ final class PetModel: ObservableObject {
     private func moodDidChange() {
         chatterTask?.cancel()
         moodLine = mood == .working ? "" : nextLine(for: mood)
+        updatePanelSize()
         switch mood {
         case .idle:
             chatterTask = Task { [weak self] in
