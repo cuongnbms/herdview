@@ -24,6 +24,7 @@ struct MenuContentView: View {
                 }
                 Divider()
                 PetPickerRow(pet: pet)
+                PetSizeRow(pet: pet)
                 Divider()
                 HStack {
                     Text("HerdPet \(HerdPet.version)").font(.caption2).foregroundStyle(.tertiary)
@@ -70,6 +71,25 @@ private struct PetPickerRow: View {
                 .labelsHidden()
                 .pickerStyle(.menu)
                 .frame(maxWidth: 200)
+            }
+        }
+    }
+}
+
+/// Sets how big the pet is drawn: three presets for a quick jump, a slider for
+/// anything in between. The pet itself resizes live.
+private struct PetSizeRow: View {
+    @ObservedObject var pet: PetModel
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text("Size").font(.headline)
+            Slider(value: $pet.petPoint, in: PetSize.minimum...PetSize.maximum)
+                .controlSize(.small)
+            ForEach(PetSize.presets) { preset in
+                Button(preset.name) { pet.petPoint = preset.point }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
             }
         }
     }
