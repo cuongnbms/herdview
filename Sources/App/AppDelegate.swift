@@ -42,12 +42,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusBar = bar
         bar.start()
 
-        store.onTransition = { transition in
-            switch transition.to {
-            case .blocked, .done: model.flash(agentKey: transition.agent.key)
-            default: break
-            }
-        }
         moodCancellable = store.$agents.sink { agents in
             model.mood = MoodResolver.resolve(agents)
             model.update(agents: agents)

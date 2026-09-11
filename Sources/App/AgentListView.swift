@@ -55,7 +55,10 @@ private struct HostSection: View {
                     .foregroundStyle(.secondary)
             }
             ForEach(agents, id: \.key) { agent in
-                AgentRow(agent: agent, displayName: names[agent.key] ?? agent.info.displayName, now: now)
+                AgentRow(agent: agent,
+                         displayName: names[agent.key] ?? agent.info.displayName,
+                         isHighlighted: store.highlighted.contains(agent.key),
+                         now: now)
             }
         }
     }
@@ -64,6 +67,7 @@ private struct HostSection: View {
 private struct AgentRow: View {
     let agent: TrackedAgent
     let displayName: String
+    let isHighlighted: Bool
     let now: Date
 
     var body: some View {
@@ -82,6 +86,11 @@ private struct AgentRow: View {
                 .frame(minWidth: 44, alignment: .trailing)
         }
         .padding(.vertical, 2)
+        .background(
+            RoundedRectangle(cornerRadius: 5)
+                .fill(agent.status.dotColor.opacity(isHighlighted ? 0.22 : 0))
+        )
+        .animation(.easeInOut(duration: 0.25), value: isHighlighted)
     }
 
     @ViewBuilder private var icon: some View {
