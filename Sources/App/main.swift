@@ -1,4 +1,7 @@
-import Foundation
-import HerdPetCore
+import AppKit
 
-print("herdpet \(HerdPet.version)")
+let delegate = MainActor.assumeIsolated { AppDelegate() }
+let app = NSApplication.shared
+app.delegate = delegate
+app.setActivationPolicy(.accessory)
+app.run()
