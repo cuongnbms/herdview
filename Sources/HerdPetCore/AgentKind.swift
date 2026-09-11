@@ -26,6 +26,8 @@ public enum AgentKind: String, Sendable, CaseIterable, Equatable {
         case "gemini": return .gemini
         case "cursor": return .cursor
         case "opencode": return .opencode
+        case "windsurf": return .windsurf
+        case "cli": return .cli
         case "copilot", "github-copilot": return .copilot
         case "kiro": return .kiroCLI
         case "droid": return .droid

@@ -23,8 +23,11 @@ final class PetWindowController: NSObject, NSWindowDelegate {
         panel.isRestorable = false
         panel.isMovableByWindowBackground = true
         panel.becomesKeyOnlyIfNeeded = true
+        panel.hidesOnDeactivate = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        panel.contentView = NSHostingView(rootView: PetView(model: model))
+        // NSHostingView swallows mouse-down, which would block
+        // isMovableByWindowBackground. Hit-through lets the panel drag.
+        panel.contentView = HitThroughHostingView(rootView: PetView(model: model))
         panel.delegate = self
         place()
     }
@@ -47,5 +50,12 @@ final class PetWindowController: NSObject, NSWindowDelegate {
         let visible = screen.visibleFrame
         let origin = NSPoint(x: visible.maxX - PetView.size.width - 24, y: visible.minY + 24)
         panel.setFrameOrigin(origin)
+    }
+}
+
+/// SwiftUI hosting views eat hits; returning nil lets the panel drag by its background.
+private final class HitThroughHostingView<Content: View>: NSHostingView<Content> {
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        nil
     }
 }
