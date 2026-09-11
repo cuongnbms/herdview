@@ -14,3 +14,17 @@ public enum AgentStatus: String, Codable, Sendable, CaseIterable, Equatable {
         self = AgentStatus(rawValue: raw) ?? .unknown
     }
 }
+
+public extension AgentStatus {
+    /// Which agent to show first: the ones waiting on a human, then the busy
+    /// ones, then the finished ones. Orders both the menu list and the bubble.
+    var attentionRank: Int {
+        switch self {
+        case .blocked: return 0
+        case .working: return 1
+        case .done: return 2
+        case .idle: return 3
+        case .unknown: return 4
+        }
+    }
+}

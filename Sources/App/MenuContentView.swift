@@ -134,7 +134,7 @@ private struct AgentRow: View {
                 Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer(minLength: 8)
-            Circle().fill(color).frame(width: 8, height: 8)
+            Circle().fill(agent.status.dotColor).frame(width: 8, height: 8)
             Text(agent.status.rawValue).font(.caption)
             Text(TimerFormatter.string(from: agent.since, to: now))
                 .font(.caption.monospacedDigit())
@@ -155,14 +155,5 @@ private struct AgentRow: View {
     private var subtitle: String {
         let cwd = agent.info.cwd.map { URL(fileURLWithPath: $0).lastPathComponent } ?? ""
         return cwd.isEmpty ? agent.session : "\(agent.session) · \(cwd)"
-    }
-
-    private var color: Color {
-        switch agent.status {
-        case .blocked: return .orange
-        case .working: return .green
-        case .done: return .blue
-        case .idle, .unknown: return .gray
-        }
     }
 }

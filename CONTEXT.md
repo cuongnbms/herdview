@@ -26,17 +26,23 @@ _Avoid_: State, waiting, registered
 
 **Transition**:
 An Agent changing from one Status to another as observed by HerdPet. Only transitions
-into `blocked` and `done` produce an Alert.
+into `blocked` and `done` produce a Highlight.
+
+**Roster**:
+The pet's bubble as a list: one row per Agent that is `blocked`, `working` or `done`,
+most attention-worthy first, capped at five rows with the rest counted as "+N more".
+Shown whenever any such Agent exists, which is most of the time.
+_Avoid_: Alert, notification, toast
 
 **Chatter**:
-The line the pet keeps showing for the current Mood, drawn from that Mood's pool. Idle
-chatter is re-picked every couple of minutes; working shows a compact `…` and flashes a
-line now and then.
+The line the pet shows when the Roster is empty, drawn from the idle Mood's Pool and
+re-picked every couple of minutes.
 _Avoid_: Chat, message
 
-**Alert**:
-A bubble that replaces the Chatter for eight seconds on a Transition into `blocked` or
-`done`: a line from that Mood's pool over the Agent's name and Host.
+**Highlight**:
+The tint a Roster row carries for three seconds after its Agent's Transition into
+`blocked` or `done`. It is the only thing marking a change; the Roster itself never
+goes away to announce one.
 _Avoid_: Notification, toast
 
 **Pool**:
@@ -51,6 +57,11 @@ so timers count from observation, not from the real change.
 The single value the pet animates: `blocked`, `working`, `done`, or `idle`, chosen from
 all Agents by that priority.
 _Avoid_: Aggregate state
+
+**Pet size**:
+The sprite's edge length in points, 60 to 240, set by slider or S/M/L preset in the
+menu bar popover and remembered across launches. The pet's panel is sized from it and
+from the Roster's row count, and resizes around the pet's feet.
 
 **Pet pack**:
 A `pet.json` plus spritesheet directory under `~/.agentpet/pets/`, in AgentPet's format,

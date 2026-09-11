@@ -1,22 +1,15 @@
 import AppKit
 import HerdPetCore
 
-/// What the pet window shows: which pack, the current mood's clip, a chatter
-/// line that follows the mood, an optional short-lived alert on top, and how
-/// big the whole thing is drawn.
+/// What the pet window shows: which pack, the current mood's clip, the agents
+/// it is reporting on, a chatter line for when there are none, and how big the
+/// whole thing is drawn.
 @MainActor
 final class PetModel: ObservableObject {
-    static let alertSeconds: UInt64 = 8
-    /// Idle chatter is re-picked this often; working flashes a line this often.
+    /// Idle chatter is re-picked this often.
     static let idleRotateSeconds: UInt64 = 120
-    static let workingFlashEverySeconds: UInt64 = 40
-    static let workingFlashSeconds: UInt64 = 6
-
-    /// A bubble that replaces the chatter for `alertSeconds`.
-    struct Alert: Equatable {
-        var text: String
-        var detail: String?
-    }
+    /// How long a row stays highlighted after its agent turns blocked or done.
+    static let highlightSeconds: UInt64 = 3
 
     @Published var mood: Mood = .idle {
         didSet { if mood != oldValue { moodDidChange() } }
@@ -24,14 +17,17 @@ final class PetModel: ObservableObject {
     @Published private(set) var pack: ImagePetPack?
     @Published private(set) var packs: [PetPackSummary] = []
     @Published private(set) var selectedPetID: String?
-    /// The persistent line for the current mood. Empty while working, where the
-    /// bubble shows a compact "…" instead.
+    /// The line shown when no agent is doing anything; the agent list replaces
+    /// it as soon as there is one.
     @Published private(set) var moodLine: String = "" {
         didSet { updatePanelSize() }
     }
-    @Published private(set) var alert: Alert? {
+    /// The agents the bubble names, blocked first. Empty when the herd is idle.
+    @Published private(set) var bubble: AgentBubbleContent = .empty {
         didSet { updatePanelSize() }
     }
+    /// Rows flashing because their agent just turned blocked or done.
+    @Published private(set) var highlighted: Set<String> = []
 
     /// The sprite's edge length in points. Clamped to `PetSize`'s range and
     /// remembered across launches.
@@ -54,8 +50,8 @@ final class PetModel: ObservableObject {
     private let clips: [Mood: Int]
     private let messages: [Mood: [String]]
     private var pickCounter = Int.random(in: 0..<1_000)
-    private var alertTask: Task<Void, Never>?
     private var chatterTask: Task<Void, Never>?
+    private var highlightTasks: [String: Task<Void, Never>] = [:]
 
     /// `config.pet` is the default; a pet picked in the menu wins over it.
     init(config: HerdPetConfig, defaults: UserDefaults = .standard) {
@@ -105,9 +101,8 @@ final class PetModel: ObservableObject {
     /// Lines the bubble draws right now, which is what the panel's height is
     /// built from. Zero means no bubble at all.
     private var bubbleLines: Int {
-        if let alert { return alert.detail == nil ? 1 : 2 }
-        if !moodLine.isEmpty { return 1 }
-        return mood == .working ? 1 : 0
+        if bubble.lineCount > 0 { return bubble.lineCount }
+        return moodLine.isEmpty ? 0 : 1
     }
 
     private func updatePanelSize() {
@@ -123,56 +118,39 @@ final class PetModel: ObservableObject {
         return BubbleLines.line(for: mood, custom: messages, seed: pickCounter)
     }
 
-    /// Shows an alert above the pet for `alertSeconds`, replacing any alert.
-    func showAlert(_ alert: Alert) {
-        self.alert = alert
-        alertTask?.cancel()
-        alertTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: Self.alertSeconds * 1_000_000_000)
+    // MARK: Agent list
+
+    /// Rebuilds the bubble from the current agents.
+    func update(agents: [TrackedAgent]) {
+        bubble = AgentBubbleRows.content(from: agents)
+    }
+
+    /// Flashes one agent's row for `highlightSeconds`, for when it has just
+    /// turned blocked or done. Several rows can flash at once.
+    func flash(agentKey: String) {
+        highlighted.insert(agentKey)
+        highlightTasks[agentKey]?.cancel()
+        highlightTasks[agentKey] = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: Self.highlightSeconds * 1_000_000_000)
             guard !Task.isCancelled else { return }
-            self?.alert = nil
+            self?.highlighted.remove(agentKey)
+            self?.highlightTasks[agentKey] = nil
         }
     }
 
-    /// The bubble for an agent transition: a pool line for the new status,
-    /// with "name @ host" underneath. Nil for statuses without a bubble.
-    static func alert(for transition: Transition, using model: PetModel) -> Alert? {
-        let mood: Mood
-        switch transition.to {
-        case .blocked: mood = .blocked
-        case .done: mood = .done
-        default: return nil
-        }
-        return Alert(text: model.nextLine(for: mood),
-                     detail: "\(transition.agent.info.displayName) @ \(transition.agent.host)")
-    }
-
+    /// Only idle keeps a chatter line rotating; every other mood has agents to
+    /// name, and the list takes the bubble.
     private func moodDidChange() {
         chatterTask?.cancel()
-        moodLine = mood == .working ? "" : nextLine(for: mood)
+        moodLine = nextLine(for: mood)
         updatePanelSize()
-        switch mood {
-        case .idle:
-            chatterTask = Task { [weak self] in
-                while !Task.isCancelled {
-                    try? await Task.sleep(nanoseconds: Self.idleRotateSeconds * 1_000_000_000)
-                    guard !Task.isCancelled, let model = self else { return }
-                    model.moodLine = model.nextLine(for: .idle)
-                }
+        guard mood == .idle else { return }
+        chatterTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: Self.idleRotateSeconds * 1_000_000_000)
+                guard !Task.isCancelled, let model = self else { return }
+                model.moodLine = model.nextLine(for: .idle)
             }
-        case .working:
-            chatterTask = Task { [weak self] in
-                while !Task.isCancelled {
-                    try? await Task.sleep(nanoseconds: Self.workingFlashEverySeconds * 1_000_000_000)
-                    guard !Task.isCancelled, let model = self else { return }
-                    model.moodLine = model.nextLine(for: .working)
-                    try? await Task.sleep(nanoseconds: Self.workingFlashSeconds * 1_000_000_000)
-                    guard !Task.isCancelled else { return }
-                    model.moodLine = ""
-                }
-            }
-        case .blocked, .done:
-            break
         }
     }
 }

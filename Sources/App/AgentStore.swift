@@ -52,18 +52,8 @@ final class AgentStore: ObservableObject {
         agents = bySession.values.flatMap { $0 }.sorted(by: Self.ordered)
     }
 
-    static func rank(_ status: AgentStatus) -> Int {
-        switch status {
-        case .blocked: return 0
-        case .working: return 1
-        case .done: return 2
-        case .idle: return 3
-        case .unknown: return 4
-        }
-    }
-
     private static func ordered(_ a: TrackedAgent, _ b: TrackedAgent) -> Bool {
-        let ra = rank(a.status), rb = rank(b.status)
+        let ra = a.status.attentionRank, rb = b.status.attentionRank
         return ra != rb ? ra < rb : a.key < b.key
     }
 }
