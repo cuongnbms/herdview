@@ -9,6 +9,8 @@ public struct AgentInfo: Codable, Equatable, Sendable {
     public var agent: String?
     public var displayAgent: String?
     public var name: String?
+    public var terminalTitle: String?
+    public var terminalTitleStripped: String?
     public var cwd: String?
     public var agentStatus: AgentStatus
     public var revision: UInt64
@@ -20,13 +22,16 @@ public struct AgentInfo: Codable, Equatable, Sendable {
         case agent
         case displayAgent = "display_agent"
         case name
+        case terminalTitle = "terminal_title"
+        case terminalTitleStripped = "terminal_title_stripped"
         case cwd
         case agentStatus = "agent_status"
         case revision
     }
 
     public init(paneId: String, workspaceId: String, tabId: String? = nil, agent: String? = nil,
-                displayAgent: String? = nil, name: String? = nil, cwd: String? = nil,
+                displayAgent: String? = nil, name: String? = nil, terminalTitle: String? = nil,
+                terminalTitleStripped: String? = nil, cwd: String? = nil,
                 agentStatus: AgentStatus, revision: UInt64) {
         self.paneId = paneId
         self.workspaceId = workspaceId
@@ -34,11 +39,14 @@ public struct AgentInfo: Codable, Equatable, Sendable {
         self.agent = agent
         self.displayAgent = displayAgent
         self.name = name
+        self.terminalTitle = terminalTitle
+        self.terminalTitleStripped = terminalTitleStripped
         self.cwd = cwd
         self.agentStatus = agentStatus
         self.revision = revision
     }
 
-    /// The user-given agent name when there is one, else the pane id.
-    public var displayName: String { name ?? paneId }
+    /// The user-given agent name when there is one, else the terminal's own
+    /// title, else the working directory, else the pane id. See `AgentTitles`.
+    public var displayName: String { AgentTitles.baseTitle(for: self) }
 }

@@ -40,6 +40,7 @@ public enum AgentBubbleRows {
     public static let defaultLimit = 5
 
     public static func content(from agents: [TrackedAgent], limit: Int = defaultLimit) -> AgentBubbleContent {
+        let names = AgentTitles.displayNames(for: agents)
         let reported = agents
             .filter { $0.status == .blocked || $0.status == .working || $0.status == .done }
             .sorted { a, b in
@@ -49,7 +50,7 @@ public enum AgentBubbleRows {
         let shown = reported.prefix(max(limit, 1))
         return AgentBubbleContent(
             rows: shown.map {
-                AgentBubbleRow(id: $0.key, name: $0.info.displayName, host: $0.host, status: $0.status)
+                AgentBubbleRow(id: $0.key, name: names[$0.key] ?? $0.info.displayName, host: $0.host, status: $0.status)
             },
             overflow: reported.count - shown.count
         )
