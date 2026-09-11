@@ -20,13 +20,16 @@ public struct HostConfig: Equatable, Sendable {
 public struct HerdPetConfig: Equatable, Sendable {
     public var pet: String?
     public var clips: [Mood: Int]
+    /// Custom bubble lines per mood from `[messages]`; see `BubbleLines.pool`.
+    public var messages: [Mood: [String]]
     public var hosts: [HostConfig]
 
     public static let defaultClips: [Mood: Int] = [.idle: 0, .working: 1, .blocked: 2, .done: 3]
 
-    public init(pet: String?, clips: [Mood: Int], hosts: [HostConfig]) {
+    public init(pet: String?, clips: [Mood: Int], messages: [Mood: [String]] = [:], hosts: [HostConfig]) {
         self.pet = pet
         self.clips = clips
+        self.messages = messages
         self.hosts = hosts
     }
 
@@ -70,6 +73,19 @@ public enum ConfigLoader {
             clips[mood] = index
         }
 
+        var messages: [Mood: [String]] = [:]
+        for (key, value) in doc.tables["messages"] ?? [:] {
+            guard let mood = Mood(rawValue: key) else { continue }
+            guard case let .array(items) = value else {
+                throw ConfigError.invalidType("messages.\(key) must be an array of strings")
+            }
+            let lines = items.compactMap(\.stringValue)
+            guard lines.count == items.count else {
+                throw ConfigError.invalidType("messages.\(key) must contain only strings")
+            }
+            messages[mood] = lines
+        }
+
         var hosts: [HostConfig] = []
         for (index, entry) in (doc.arrays["hosts"] ?? []).enumerated() {
             guard let name = entry["name"]?.stringValue else { throw ConfigError.missingField(host: index, field: "name") }
@@ -83,6 +99,6 @@ public enum ConfigLoader {
             hosts.append(HostConfig(name: name, ssh: ssh, herdrPath: herdrPath, pollSeconds: poll))
         }
 
-        return HerdPetConfig(pet: pet, clips: clips, hosts: hosts)
+        return HerdPetConfig(pet: pet, clips: clips, messages: messages, hosts: hosts)
     }
 }

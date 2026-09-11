@@ -51,4 +51,30 @@ final class TOMLSubsetTests: XCTestCase {
     func testMissingEqualsThrows() {
         XCTAssertThrowsError(try TOMLSubset.parse("just words"))
     }
+
+    func testInlineStringArray() throws {
+        let doc = try TOMLSubset.parse("""
+        [messages]
+        blocked = ["I need you!", "Your turn 👀"]   # comment
+        empty = []
+        one = [ "x" ]
+        """)
+        XCTAssertEqual(doc.tables["messages"]?["blocked"], .array([.string("I need you!"), .string("Your turn 👀")]))
+        XCTAssertEqual(doc.tables["messages"]?["empty"], .array([]))
+        XCTAssertEqual(doc.tables["messages"]?["one"], .array([.string("x")]))
+        XCTAssertEqual(doc.tables["messages"]?["blocked"]?.stringArrayValue, ["I need you!", "Your turn 👀"])
+    }
+
+    func testArrayWithCommaInsideStringAndTrailingComma() throws {
+        let doc = try TOMLSubset.parse(#"lines = ["a, b", "c",]"#)
+        XCTAssertEqual(doc.root["lines"]?.stringArrayValue, ["a, b", "c"])
+    }
+
+    func testUnterminatedArrayThrows() {
+        XCTAssertThrowsError(try TOMLSubset.parse(#"lines = ["a""#))
+    }
+
+    func testNestedArrayIsRejected() {
+        XCTAssertThrowsError(try TOMLSubset.parse(#"lines = [["a"]]"#))
+    }
 }

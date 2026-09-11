@@ -4,9 +4,14 @@ public enum TOMLValue: Equatable, Sendable {
     case string(String)
     case integer(Int)
     case bool(Bool)
+    indirect case array([TOMLValue])
 
     public var stringValue: String? { if case let .string(s) = self { return s } else { return nil } }
     public var intValue: Int? { if case let .integer(i) = self { return i } else { return nil } }
+    /// The elements of an array value that are strings; nil when not an array.
+    public var stringArrayValue: [String]? {
+        if case let .array(items) = self { return items.compactMap(\.stringValue) } else { return nil }
+    }
 }
 
 public struct TOMLDocument: Equatable, Sendable {
@@ -21,7 +26,8 @@ public enum TOMLSubsetError: Error, Equatable {
 }
 
 /// A deliberately small TOML reader: root keys, `[table]`, `[[array]]`, and
-/// values that are basic strings, integers, or booleans. Nothing else.
+/// values that are basic strings, integers, booleans, or a single-line array
+/// of those. Nothing else.
 public enum TOMLSubset {
     private enum Cursor {
         case root
@@ -95,6 +101,18 @@ public enum TOMLSubset {
     private static func parseValue(_ raw: String, line: Int) throws -> TOMLValue {
         if raw == "true" { return .bool(true) }
         if raw == "false" { return .bool(false) }
+        if raw.hasPrefix("[") {
+            guard raw.count >= 2, raw.hasSuffix("]") else { throw TOMLSubsetError.syntax(line: line, "unterminated array") }
+            let inner = raw.dropFirst().dropLast()
+            var items: [TOMLValue] = []
+            for element in splitTopLevel(String(inner)) {
+                let trimmed = element.trimmingCharacters(in: .whitespaces)
+                if trimmed.isEmpty { continue }
+                guard !trimmed.hasPrefix("[") else { throw TOMLSubsetError.syntax(line: line, "nested arrays are not supported") }
+                items.append(try parseValue(trimmed, line: line))
+            }
+            return .array(items)
+        }
         if raw.hasPrefix("\"") {
             guard raw.count >= 2, raw.hasSuffix("\"") else { throw TOMLSubsetError.syntax(line: line, "unterminated string") }
             var out = ""
@@ -117,5 +135,29 @@ public enum TOMLSubset {
         }
         if let i = Int(raw) { return .integer(i) }
         throw TOMLSubsetError.syntax(line: line, "unsupported value: \(raw)")
+    }
+
+    /// Splits on commas that are not inside a double-quoted string.
+    private static func splitTopLevel(_ text: String) -> [String] {
+        var parts: [String] = []
+        var current = ""
+        var inString = false
+        var escaped = false
+        for ch in text {
+            if inString {
+                current.append(ch)
+                if escaped { escaped = false } else if ch == "\\" { escaped = true } else if ch == "\"" { inString = false }
+                continue
+            }
+            if ch == "," {
+                parts.append(current)
+                current = ""
+                continue
+            }
+            if ch == "\"" { inString = true }
+            current.append(ch)
+        }
+        parts.append(current)
+        return parts
     }
 }

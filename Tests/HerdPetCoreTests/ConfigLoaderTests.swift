@@ -32,6 +32,27 @@ final class ConfigLoaderTests: XCTestCase {
         XCTAssertEqual(config.clipIndex(for: .done), 3)
     }
 
+    func testMessagesTable() throws {
+        let config = try ConfigLoader.parse("""
+        [messages]
+        blocked = ["Cần bạn!", "Tới lượt bạn"]
+        done = []
+        bogus = ["ignored"]
+        """)
+        XCTAssertEqual(config.messages[.blocked], ["Cần bạn!", "Tới lượt bạn"])
+        XCTAssertEqual(config.messages[.done], [])
+        XCTAssertNil(config.messages[.idle])
+    }
+
+    func testMessagesMustBeStringArrays() {
+        XCTAssertThrowsError(try ConfigLoader.parse("[messages]\nblocked = \"nope\"")) { error in
+            XCTAssertEqual(error as? ConfigError, .invalidType("messages.blocked must be an array of strings"))
+        }
+        XCTAssertThrowsError(try ConfigLoader.parse("[messages]\nblocked = [1, 2]")) { error in
+            XCTAssertEqual(error as? ConfigError, .invalidType("messages.blocked must contain only strings"))
+        }
+    }
+
     func testDefaultsWhenOptionalFieldsAbsent() throws {
         let config = try ConfigLoader.parse("""
         [[hosts]]
@@ -40,6 +61,7 @@ final class ConfigLoaderTests: XCTestCase {
         """)
         XCTAssertNil(config.pet)
         XCTAssertEqual(config.clips, HerdPetConfig.defaultClips)
+        XCTAssertTrue(config.messages.isEmpty)
         XCTAssertEqual(config.hosts[0].pollSeconds, 2)
     }
 

@@ -11,7 +11,7 @@ final class AgentKindTests: XCTestCase {
         XCTAssertEqual(AgentKind.from(label: "opencode"), .opencode)
         XCTAssertEqual(AgentKind.from(label: "windsurf"), .windsurf)
         XCTAssertEqual(AgentKind.from(label: "cli"), .cli)
-        XCTAssertEqual(AgentKind.from(label: "copilot"), .copilot
+        XCTAssertEqual(AgentKind.from(label: "copilot"), .copilot)
         XCTAssertEqual(AgentKind.from(label: "kiro"), .kiroCLI)
         XCTAssertEqual(AgentKind.from(label: "droid"), .droid)
         XCTAssertEqual(AgentKind.from(label: "pi"), .pi)
