@@ -18,23 +18,10 @@ public struct HostConfig: Equatable, Sendable {
 }
 
 public struct HerdPetConfig: Equatable, Sendable {
-    public var pet: String?
-    public var clips: [Mood: Int]
-    /// Custom bubble lines per mood from `[messages]`; see `BubbleLines.pool`.
-    public var messages: [Mood: [String]]
     public var hosts: [HostConfig]
 
-    public static let defaultClips: [Mood: Int] = [.idle: 0, .working: 1, .blocked: 2, .done: 3]
-
-    public init(pet: String?, clips: [Mood: Int], messages: [Mood: [String]] = [:], hosts: [HostConfig]) {
-        self.pet = pet
-        self.clips = clips
-        self.messages = messages
+    public init(hosts: [HostConfig]) {
         self.hosts = hosts
-    }
-
-    public func clipIndex(for mood: Mood) -> Int {
-        clips[mood] ?? HerdPetConfig.defaultClips[mood] ?? 0
     }
 }
 
@@ -64,28 +51,9 @@ public enum ConfigLoader {
             throw ConfigError.parse("line \(line): \(message)")
         }
 
-        let pet = doc.root["pet"]?.stringValue
-
-        var clips = HerdPetConfig.defaultClips
-        for (key, value) in doc.tables["clips"] ?? [:] {
-            guard let mood = Mood(rawValue: key) else { continue }
-            guard let index = value.intValue else { throw ConfigError.invalidType("clips.\(key) must be an integer") }
-            clips[mood] = index
-        }
-
-        var messages: [Mood: [String]] = [:]
-        for (key, value) in doc.tables["messages"] ?? [:] {
-            guard let mood = Mood(rawValue: key) else { continue }
-            guard case let .array(items) = value else {
-                throw ConfigError.invalidType("messages.\(key) must be an array of strings")
-            }
-            let lines = items.compactMap(\.stringValue)
-            guard lines.count == items.count else {
-                throw ConfigError.invalidType("messages.\(key) must contain only strings")
-            }
-            messages[mood] = lines
-        }
-
+        // `pet`, `[clips]` and `[messages]` are no longer read. They parse as
+        // ordinary TOML and are ignored, so a config written for the pet still
+        // loads; the README says they are gone.
         var hosts: [HostConfig] = []
         for (index, entry) in (doc.arrays["hosts"] ?? []).enumerated() {
             guard let name = entry["name"]?.stringValue else { throw ConfigError.missingField(host: index, field: "name") }
@@ -99,6 +67,6 @@ public enum ConfigLoader {
             hosts.append(HostConfig(name: name, ssh: ssh, herdrPath: herdrPath, pollSeconds: poll))
         }
 
-        return HerdPetConfig(pet: pet, clips: clips, messages: messages, hosts: hosts)
+        return HerdPetConfig(hosts: hosts)
     }
 }

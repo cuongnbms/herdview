@@ -20,37 +20,11 @@ final class ConfigLoaderTests: XCTestCase {
         poll_seconds = 5
         """
         let config = try ConfigLoader.parse(text)
-        XCTAssertEqual(config.pet, "boba")
         XCTAssertEqual(config.hosts.count, 2)
         XCTAssertEqual(config.hosts[0], HostConfig(name: "local", ssh: nil, herdrPath: "/opt/homebrew/bin/herdr", pollSeconds: 2))
         XCTAssertTrue(config.hosts[0].isLocal)
         XCTAssertEqual(config.hosts[1], HostConfig(name: "devtuf", ssh: "devtuf", herdrPath: "/home/cuongnb/.local/bin/herdr", pollSeconds: 5))
         XCTAssertFalse(config.hosts[1].isLocal)
-        XCTAssertEqual(config.clipIndex(for: .blocked), 3)
-        XCTAssertEqual(config.clipIndex(for: .idle), 0)
-        XCTAssertEqual(config.clipIndex(for: .working), 1)
-        XCTAssertEqual(config.clipIndex(for: .done), 3)
-    }
-
-    func testMessagesTable() throws {
-        let config = try ConfigLoader.parse("""
-        [messages]
-        blocked = ["Cần bạn!", "Tới lượt bạn"]
-        done = []
-        bogus = ["ignored"]
-        """)
-        XCTAssertEqual(config.messages[.blocked], ["Cần bạn!", "Tới lượt bạn"])
-        XCTAssertEqual(config.messages[.done], [])
-        XCTAssertNil(config.messages[.idle])
-    }
-
-    func testMessagesMustBeStringArrays() {
-        XCTAssertThrowsError(try ConfigLoader.parse("[messages]\nblocked = \"nope\"")) { error in
-            XCTAssertEqual(error as? ConfigError, .invalidType("messages.blocked must be an array of strings"))
-        }
-        XCTAssertThrowsError(try ConfigLoader.parse("[messages]\nblocked = [1, 2]")) { error in
-            XCTAssertEqual(error as? ConfigError, .invalidType("messages.blocked must contain only strings"))
-        }
     }
 
     func testDefaultsWhenOptionalFieldsAbsent() throws {
@@ -59,9 +33,6 @@ final class ConfigLoaderTests: XCTestCase {
         name = "local"
         herdr_path = "/opt/homebrew/bin/herdr"
         """)
-        XCTAssertNil(config.pet)
-        XCTAssertEqual(config.clips, HerdPetConfig.defaultClips)
-        XCTAssertTrue(config.messages.isEmpty)
         XCTAssertEqual(config.hosts[0].pollSeconds, 2)
     }
 

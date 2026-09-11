@@ -13,7 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        var config = HerdPetConfig(pet: nil, clips: HerdPetConfig.defaultClips, hosts: [])
+        var config = HerdPetConfig(hosts: [])
         do {
             config = try ConfigLoader.load()
         } catch {
