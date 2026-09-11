@@ -11,6 +11,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var petWindow: PetWindowController?
     private var moodCancellable: AnyCancellable?
 
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        MainMenu.install()
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         var config = HerdPetConfig(pet: nil, clips: HerdPetConfig.defaultClips, hosts: [])
         do {
