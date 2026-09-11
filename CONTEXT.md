@@ -26,7 +26,22 @@ _Avoid_: State, waiting, registered
 
 **Transition**:
 An Agent changing from one Status to another as observed by HerdPet. Only transitions
-into `blocked` and `done` produce a bubble.
+into `blocked` and `done` produce an Alert.
+
+**Chatter**:
+The line the pet keeps showing for the current Mood, drawn from that Mood's pool. Idle
+chatter is re-picked every couple of minutes; working shows a compact `…` and flashes a
+line now and then.
+_Avoid_: Chat, message
+
+**Alert**:
+A bubble that replaces the Chatter for eight seconds on a Transition into `blocked` or
+`done`: a line from that Mood's pool over the Agent's name and Host.
+_Avoid_: Notification, toast
+
+**Pool**:
+The lines a Mood can say. Built in, or replaced per Mood by a non-empty list under
+`[messages]` in the config.
 
 **Since**:
 The moment HerdPet observed an Agent's current Status. Herdr does not report timestamps,
@@ -39,4 +54,5 @@ _Avoid_: Aggregate state
 
 **Pet pack**:
 A `pet.json` plus spritesheet directory under `~/.agentpet/pets/`, in AgentPet's format,
-providing one animation clip per Mood.
+providing one animation clip per Mood. The one shown is picked in the menu bar popover;
+the config's `pet` is only the default.

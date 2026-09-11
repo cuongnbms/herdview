@@ -25,17 +25,30 @@ private struct PetManifest: Decodable {
     let spritesheetPath: String
 }
 
+/// What a pet pack looks like in a picker: read from `pet.json` alone, so
+/// listing every installed pack never slices a spritesheet.
+struct PetPackSummary: Identifiable, Equatable {
+    let id: String
+    let displayName: String
+    let directory: URL
+}
+
 /// Loads a spritesheet pet pack and slices its frames by detecting the
 /// transparent gutters between cells, so no grid metadata is required.
 enum SpriteSlicer {
     /// Reads only the pack id from a directory's manifest, without slicing the
     /// spritesheet. Lets the store pick the prioritised pack to load first.
     static func manifestID(directory: URL) -> String? {
+        summary(directory: directory)?.id
+    }
+
+    /// Reads id and display name from a directory's manifest without slicing.
+    static func summary(directory: URL) -> PetPackSummary? {
         let manifestURL = directory.appendingPathComponent("pet.json")
         guard let data = try? Data(contentsOf: manifestURL),
               let manifest = try? JSONDecoder().decode(PetManifest.self, from: data)
         else { return nil }
-        return manifest.id
+        return PetPackSummary(id: manifest.id, displayName: manifest.displayName, directory: directory)
     }
 
     static func loadPack(directory: URL) -> ImagePetPack? {

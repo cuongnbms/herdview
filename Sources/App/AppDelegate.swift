@@ -19,20 +19,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             store.configError = "\(ConfigLoader.defaultPath): \(error)"
         }
 
-        let model = PetModel(pack: PetPackLoader.load(id: config.pet), clips: config.clips)
+        let model = PetModel(config: config)
         petModel = model
         let window = PetWindowController(model: model)
         petWindow = window
         window.show()
 
-        let bar = StatusBarController(store: store)
+        let bar = StatusBarController(store: store, pet: model)
         statusBar = bar
         bar.start()
 
         store.onTransition = { transition in
-            guard transition.to == .blocked || transition.to == .done else { return }
-            let agent = transition.agent
-            model.showBubble("\(agent.info.displayName) @ \(agent.host): \(transition.to.rawValue)")
+            guard let alert = PetModel.alert(for: transition, using: model) else { return }
+            model.showAlert(alert)
         }
         moodCancellable = store.$agents.sink { agents in
             model.mood = MoodResolver.resolve(agents)

@@ -1,22 +1,67 @@
 import AppKit
 import HerdPetCore
 
-/// What the pet window shows: the current mood's clip and an optional bubble.
+/// What the pet window shows: which pack, the current mood's clip, a chatter
+/// line that follows the mood, and an optional short-lived alert on top.
 @MainActor
 final class PetModel: ObservableObject {
-    static let bubbleSeconds: UInt64 = 8
+    static let alertSeconds: UInt64 = 8
+    /// Idle chatter is re-picked this often; working flashes a line this often.
+    static let idleRotateSeconds: UInt64 = 120
+    static let workingFlashEverySeconds: UInt64 = 40
+    static let workingFlashSeconds: UInt64 = 6
 
-    @Published var mood: Mood = .idle
-    @Published private(set) var bubbleText: String?
-
-    let pack: ImagePetPack?
-    private let clips: [Mood: Int]
-    private var hideTask: Task<Void, Never>?
-
-    init(pack: ImagePetPack?, clips: [Mood: Int]) {
-        self.pack = pack
-        self.clips = clips
+    /// A bubble that replaces the chatter for `alertSeconds`.
+    struct Alert: Equatable {
+        var text: String
+        var detail: String?
     }
+
+    @Published var mood: Mood = .idle {
+        didSet { if mood != oldValue { moodDidChange() } }
+    }
+    @Published private(set) var pack: ImagePetPack?
+    @Published private(set) var packs: [PetPackSummary] = []
+    @Published private(set) var selectedPetID: String?
+    /// The persistent line for the current mood. Empty while working, where the
+    /// bubble shows a compact "…" instead.
+    @Published private(set) var moodLine: String = ""
+    @Published private(set) var alert: Alert?
+
+    private static let selectedPetKey = "herdpet.selectedPetID"
+    private let clips: [Mood: Int]
+    private let messages: [Mood: [String]]
+    private var pickCounter = Int.random(in: 0..<1_000)
+    private var alertTask: Task<Void, Never>?
+    private var chatterTask: Task<Void, Never>?
+
+    /// `config.pet` is the default; a pet picked in the menu wins over it.
+    init(config: HerdPetConfig, defaults: UserDefaults = .standard) {
+        clips = config.clips
+        messages = config.messages
+        packs = PetPackLoader.listPacks()
+        let saved = defaults.string(forKey: Self.selectedPetKey)
+        let wanted = saved.flatMap { id in packs.contains { $0.id == id } ? id : nil } ?? config.pet
+        pack = PetPackLoader.load(id: wanted)
+        selectedPetID = pack?.id
+        moodDidChange()
+    }
+
+    // MARK: Pet selection
+
+    /// Re-reads `~/.agentpet/pets`, for when the picker opens.
+    func refreshPacks() {
+        packs = PetPackLoader.listPacks()
+    }
+
+    func selectPet(id: String) {
+        guard id != selectedPetID, let loaded = PetPackLoader.load(id: id) else { return }
+        pack = loaded
+        selectedPetID = loaded.id
+        UserDefaults.standard.set(loaded.id, forKey: Self.selectedPetKey)
+    }
+
+    // MARK: Sprite
 
     /// Frames of the clip bound to `mood`. `ImagePetPack.clip` clamps to the
     /// last row when the pack has fewer rows than the binding asks for.
@@ -29,14 +74,64 @@ final class PetModel: ObservableObject {
         mood == .working ? 6 : 3
     }
 
-    /// Shows `text` above the pet for `bubbleSeconds`, replacing any bubble.
-    func showBubble(_ text: String) {
-        bubbleText = text
-        hideTask?.cancel()
-        hideTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: PetModel.bubbleSeconds * 1_000_000_000)
+    // MARK: Bubbles
+
+    /// A fresh line from `mood`'s pool, never the same as the previous pick
+    /// when the pool has more than one line.
+    func nextLine(for mood: Mood) -> String {
+        pickCounter += 1
+        return BubbleLines.line(for: mood, custom: messages, seed: pickCounter)
+    }
+
+    /// Shows an alert above the pet for `alertSeconds`, replacing any alert.
+    func showAlert(_ alert: Alert) {
+        self.alert = alert
+        alertTask?.cancel()
+        alertTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: Self.alertSeconds * 1_000_000_000)
             guard !Task.isCancelled else { return }
-            self?.bubbleText = nil
+            self?.alert = nil
+        }
+    }
+
+    /// The bubble for an agent transition: a pool line for the new status,
+    /// with "name @ host" underneath. Nil for statuses without a bubble.
+    static func alert(for transition: Transition, using model: PetModel) -> Alert? {
+        let mood: Mood
+        switch transition.to {
+        case .blocked: mood = .blocked
+        case .done: mood = .done
+        default: return nil
+        }
+        return Alert(text: model.nextLine(for: mood),
+                     detail: "\(transition.agent.info.displayName) @ \(transition.agent.host)")
+    }
+
+    private func moodDidChange() {
+        chatterTask?.cancel()
+        moodLine = mood == .working ? "" : nextLine(for: mood)
+        switch mood {
+        case .idle:
+            chatterTask = Task { [weak self] in
+                while !Task.isCancelled {
+                    try? await Task.sleep(nanoseconds: Self.idleRotateSeconds * 1_000_000_000)
+                    guard !Task.isCancelled, let model = self else { return }
+                    model.moodLine = model.nextLine(for: .idle)
+                }
+            }
+        case .working:
+            chatterTask = Task { [weak self] in
+                while !Task.isCancelled {
+                    try? await Task.sleep(nanoseconds: Self.workingFlashEverySeconds * 1_000_000_000)
+                    guard !Task.isCancelled, let model = self else { return }
+                    model.moodLine = model.nextLine(for: .working)
+                    try? await Task.sleep(nanoseconds: Self.workingFlashSeconds * 1_000_000_000)
+                    guard !Task.isCancelled else { return }
+                    model.moodLine = ""
+                }
+            }
+        case .blocked, .done:
+            break
         }
     }
 }

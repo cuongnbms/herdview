@@ -8,12 +8,14 @@ import HerdPetCore
 @MainActor
 final class StatusBarController: NSObject {
     private let store: AgentStore
+    private let pet: PetModel
     private var item: NSStatusItem?
     private let popover = NSPopover()
     private var cancellable: AnyCancellable?
 
-    init(store: AgentStore) {
+    init(store: AgentStore, pet: PetModel) {
         self.store = store
+        self.pet = pet
         super.init()
     }
 
@@ -25,7 +27,7 @@ final class StatusBarController: NSObject {
         item.button?.action = #selector(toggle)
         self.item = item
 
-        popover.contentViewController = NSHostingController(rootView: MenuContentView(store: store))
+        popover.contentViewController = NSHostingController(rootView: MenuContentView(store: store, pet: pet))
         popover.behavior = .transient
 
         cancellable = store.$agents.sink { [weak self] _ in self?.refresh() }

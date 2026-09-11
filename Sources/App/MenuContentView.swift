@@ -3,6 +3,7 @@ import HerdPetCore
 
 struct MenuContentView: View {
     @ObservedObject var store: AgentStore
+    @ObservedObject var pet: PetModel
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
@@ -22,6 +23,8 @@ struct MenuContentView: View {
                     HostSection(host: host, store: store, now: context.date)
                 }
                 Divider()
+                PetPickerRow(pet: pet)
+                Divider()
                 HStack {
                     Text("HerdPet \(HerdPet.version)").font(.caption2).foregroundStyle(.tertiary)
                     Spacer()
@@ -32,6 +35,42 @@ struct MenuContentView: View {
             }
             .padding(12)
             .frame(width: 360)
+        }
+        .onAppear { pet.refreshPacks() }
+    }
+}
+
+/// Picks the pet pack from `~/.agentpet/pets`. The choice is remembered and
+/// overrides `pet` in the config file.
+private struct PetPickerRow: View {
+    @ObservedObject var pet: PetModel
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text("Pet").font(.headline)
+            Spacer()
+            if pet.packs.isEmpty {
+                Text("No packs in \(PetPackLoader.petsDir.path)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            } else {
+                Picker("Pet", selection: Binding(
+                    get: { pet.selectedPetID ?? "" },
+                    set: { pet.selectPet(id: $0) }
+                )) {
+                    if pet.selectedPetID == nil {
+                        Text("Choose…").tag("")
+                    }
+                    ForEach(pet.packs) { pack in
+                        Text(pack.displayName).tag(pack.id)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(maxWidth: 200)
+            }
         }
     }
 }

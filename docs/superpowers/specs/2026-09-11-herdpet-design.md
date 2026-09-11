@@ -22,10 +22,12 @@ In v1:
 - Menu bar icon with the number of `blocked` agents, orange when that number is non-zero.
 - Menu list grouped by host: agent icon, name or pane id, session, short cwd, status, timer.
 - One floating pet whose animation follows the aggregate mood.
-- Bubble above the pet on transitions into `blocked` and `done`.
+- Bubble above the pet: mood chatter from per-mood pools (AgentPet's lines, overridable
+  under `[messages]`), plus an alert on transitions into `blocked` and `done`.
+- Pet pack picked from the popover; the config's `pet` is the default.
 - Hosts and sessions discovered from `herdr session list --json`.
 - Remote hosts reached by forwarding the Herdr Unix socket over SSH.
-- Config from a TOML file. No settings window.
+- Config from a TOML file. No settings window; the popover holds the pet picker.
 
 Not in v1: click-to-focus, sounds, login item, XP, usage, hooks, remote daemon, web sync,
 pet roaming, per-project pets.
