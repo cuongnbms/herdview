@@ -1,22 +1,20 @@
 import AppKit
 import Combine
-import SwiftUI
 import HerdPetCore
 
 /// Menu bar item: a paw, plus an orange count while any agent is blocked.
-/// Clicking toggles a popover with `MenuContentView`.
+/// Clicking toggles the window; the popover it used to show is gone, since the
+/// window is now the whole UI and the popover was a worse copy of it.
 @MainActor
 final class StatusBarController: NSObject {
     private let store: AgentStore
-    private let pet: PetModel
-    private let menu = MenuViewModel()
+    private let onToggle: () -> Void
     private var item: NSStatusItem?
-    private let popover = NSPopover()
     private var cancellable: AnyCancellable?
 
-    init(store: AgentStore, pet: PetModel) {
+    init(store: AgentStore, onToggle: @escaping () -> Void) {
         self.store = store
-        self.pet = pet
+        self.onToggle = onToggle
         super.init()
     }
 
@@ -27,11 +25,6 @@ final class StatusBarController: NSObject {
         item.button?.target = self
         item.button?.action = #selector(toggle)
         self.item = item
-
-        popover.contentViewController = NSHostingController(
-            rootView: MenuContentView(store: store, pet: pet, menu: menu)
-        )
-        popover.behavior = .transient
 
         cancellable = store.$agents.sink { [weak self] _ in self?.refresh() }
         refresh()
@@ -50,12 +43,6 @@ final class StatusBarController: NSObject {
     }
 
     @objc private func toggle() {
-        guard let button = item?.button else { return }
-        if popover.isShown {
-            popover.performClose(nil)
-        } else {
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            popover.contentViewController?.view.window?.makeKey()
-        }
+        onToggle()
     }
 }

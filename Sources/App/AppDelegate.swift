@@ -36,7 +36,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         petWindow = window
         window.show()
 
-        let bar = StatusBarController(store: store, pet: model)
+        let bar = StatusBarController(store: store) { [weak self] in
+            self?.mainWindow?.toggle()
+        }
         statusBar = bar
         bar.start()
 
@@ -58,5 +60,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         monitor?.stop()
+    }
+
+    /// Closing the window hides it. The herd keeps being polled and the menu bar
+    /// item keeps working, so the last window closing must not end the app.
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
+    }
+
+    /// Clicking the Dock icon of an app with no visible windows asks for one.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        mainWindow?.show()
+        return true
     }
 }
