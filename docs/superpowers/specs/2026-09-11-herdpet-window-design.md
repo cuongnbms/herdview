@@ -128,13 +128,15 @@ Source: [ADR 0003](../../adr/0003-main-window-instead-of-a-floating-pet.md)
 ## Verification
 
 The user has declined new automated tests for this change, so the table below is the whole
-of it. Note that `swift test` cannot run in this environment at all: the Command Line
-Tools toolchain used here has no `XCTest` module, so the test target can only be compiled,
-not executed.
+of it. Worth knowing first: on the machine this was written on there is no Xcode and the
+Command Line Tools SDK ships no `XCTest`, so the test target can neither be run nor even
+compiled — `swift test` and `swift build --build-tests` both fail on `unable to resolve
+module dependency: 'XCTest'`. Only the app target is verifiable here, which is a
+pre-existing condition of this environment and not something this change introduces.
 
 | Check | How |
 |---|---|
-| Everything compiles, tests included | `swift build && swift build --build-tests` |
+| The app compiles | `swift build` |
 | Window opens at launch, list renders, resize and close work | `make run` |
 | Closing the window leaves the app alive and polling | close it; the menu bar item stays |
 | Clicking the paw shows and hides the window | click it twice |
@@ -142,9 +144,10 @@ not executed.
 | An old config with `pet`, `[clips]`, `[messages]` still lists its hosts | run with such a config in place |
 | A blocked/done transition tints its row for three seconds | watch a live agent change status |
 
-`ConfigLoaderTests` keeps compiling: its pet assertions are removed with the fields they
-test. The claim that an old config still loads is therefore **not** covered by a test; it
-is verified by hand, per the table.
+`ConfigLoaderTests` is edited so it keeps matching the sources: its pet assertions go with
+the fields they test. The edits to that file **cannot be compiled or run on this machine**
+(see above), so they are verified by reading alone. The claim that an old config still
+loads is therefore **not** covered by a test either; it is verified by hand, per the table.
 
 ## Out of scope
 
