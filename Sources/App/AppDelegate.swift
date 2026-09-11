@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusBar: StatusBarController?
     private var petModel: PetModel?
     private var petWindow: PetWindowController?
+    private var mainWindow: MainWindowController?
     private var moodCancellable: AnyCancellable?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
@@ -22,6 +23,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } catch {
             store.configError = "\(ConfigLoader.defaultPath): \(error)"
         }
+
+        // Named for what it is: the pet's own window is a local `window` further
+        // down until the pet goes.
+        let mainWindowController = MainWindowController(store: store)
+        mainWindow = mainWindowController
+        mainWindowController.show()
 
         let model = PetModel(config: config)
         petModel = model
