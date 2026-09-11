@@ -1,8 +1,8 @@
 # HerdPet
 
-A macOS menu bar app that shows every coding agent running inside
-[Herdr](https://herdr.dev), locally and on remote machines over SSH, with one
-floating pixel pet that reacts to the aggregate state.
+A macOS app that shows every coding agent running inside
+[Herdr](https://herdr.dev), locally and on remote machines over SSH, in one
+window, with a menu bar item carrying the number that are blocked.
 
 State comes from Herdr's own detection (`agent.list` on each session's socket),
 never from agent hooks. See `docs/adr/` for why.
@@ -13,25 +13,12 @@ never from agent hooks. See `docs/adr/` for why.
 - Herdr installed on every host you want to watch.
 - For remote hosts: SSH access with a key that needs no passphrase prompt
   (`ssh-add` it, or use a Keychain-backed key). The app runs `ssh` itself.
-- One or more pet packs under `~/.agentpet/pets/<id>/` (AgentPet format).
-  Without one, a pawprint placeholder is shown.
 
 ## Configure
 
 `~/.config/herdpet/config.toml`:
 
 ```toml
-pet = "boba"                # ~/.agentpet/pets/boba, optional default
-
-[clips]                     # fallback spritesheet row per mood, optional
-idle = 0
-working = 1
-blocked = 2
-done = 3
-
-[messages]                  # idle chatter lines, optional
-idle = ["Let's grill some bugs.", "Ship something small."]
-
 [[hosts]]
 name = "local"
 herdr_path = "/opt/homebrew/bin/herdr"
@@ -43,19 +30,19 @@ herdr_path = "/home/cuongnb/.local/bin/herdr"
 poll_seconds = 2            # optional, default 2
 ```
 
-The pet pack, how big the pet is drawn (60–240pt, with S/M/L presets), and the
-spritesheet clip each state animates are all set from the menu bar popover.
-Those choices are remembered per pack and win over `pet` and `[clips]` in the
-config, which are only the defaults.
+A config from an older version may still carry `pet`, `[clips]` or `[messages]`.
+Those keys are ignored — HerdPet has no pet to configure any more — and the file
+loads as it always did.
 
-The pet's bubble always lists the agents that are doing something: one row per
-`blocked`, `working` or `done` agent as `name @ host`, blocked first, five rows
-at most with the rest counted as `+N more`. A row tints for three seconds when
-its agent turns `blocked` or `done`. Only when nothing is running does the pet
-fall back to an idle line, re-picked every couple of minutes from a built-in
-English pool; a non-empty `idle` list under `[messages]` replaces that pool.
-The other moods now name agents instead of talking, so their pools are still
-parsed — an old config keeps working — but no longer shown.
+The window lists every agent, one section per host: its name, its session and
+short working directory, its status, and how long it has held that status. A row
+tints for three seconds when its agent turns `blocked` or `done`. The window
+remembers where you put it and how big you made it.
+
+The menu bar item shows how many agents are `blocked`, in orange, and clicking it
+shows or hides the window. Closing the window does not quit the app: the herd
+keeps being polled, and the menu bar item or the Dock icon brings the window
+back.
 
 Every 30 seconds each host is asked `herdr session list --json`; every running
 session is polled every `poll_seconds` with `agent.list`. Remote sessions are
