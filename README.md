@@ -23,7 +23,7 @@ never from agent hooks. See `docs/adr/` for why.
 ```toml
 pet = "boba"                # ~/.agentpet/pets/boba, optional default
 
-[clips]                     # spritesheet row per mood, optional
+[clips]                     # fallback spritesheet row per mood, optional
 idle = 0
 working = 1
 blocked = 2
@@ -44,14 +44,17 @@ herdr_path = "/home/cuongnb/.local/bin/herdr"
 poll_seconds = 2            # optional, default 2
 ```
 
-The pet can also be picked from the menu bar popover; that choice is remembered
-and wins over `pet` in the config.
+The pet pack, how big the pet is drawn (60–240pt, with S/M/L presets), and the
+spritesheet clip each state animates are all set from the menu bar popover.
+Those choices are remembered per pack and win over `pet` and `[clips]` in the
+config, which are only the defaults.
 
-The pet talks the way AgentPet's does: an idle line that changes every couple
-of minutes, a compact `…` while any agent is working, and a line for `blocked`
-or `done`. When an agent turns `blocked` or `done` an alert bubble names it
-(`name @ host`) for eight seconds. Each mood draws from a built-in English pool;
-a non-empty list under `[messages]` replaces that mood's pool.
+The pet's bubble always lists the agents that are doing something: one row per
+`blocked`, `working` or `done` agent as `name @ host`, blocked first, five rows
+at most with the rest counted as `+N more`. A row tints for three seconds when
+its agent turns `blocked` or `done`. Only when nothing is running does the pet
+fall back to an idle line, re-picked every couple of minutes from a built-in
+English pool; a non-empty list under `[messages]` replaces that pool.
 
 Every 30 seconds each host is asked `herdr session list --json`; every running
 session is polled every `poll_seconds` with `agent.list`. Remote sessions are

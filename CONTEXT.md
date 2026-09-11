@@ -65,5 +65,13 @@ from the Roster's row count, and resizes around the pet's feet.
 
 **Pet pack**:
 A `pet.json` plus spritesheet directory under `~/.agentpet/pets/`, in AgentPet's format,
-providing one animation clip per Mood. The one shown is picked in the menu bar popover;
-the config's `pet` is only the default.
+sliced into one Clip per spritesheet row. The one shown is picked in the menu bar
+popover; the config's `pet` is only the default.
+
+**Clip**:
+One animation of a Pet pack: the frames of a single spritesheet row.
+
+**Clip binding**:
+Which Clip a Mood animates, chosen per Pet pack in the menu bar popover and remembered
+there. `[clips]` in the config is the fallback for unbound Moods; a binding past the end
+of the pack is clamped, never an error.

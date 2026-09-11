@@ -25,6 +25,7 @@ struct MenuContentView: View {
                 Divider()
                 PetPickerRow(pet: pet)
                 PetSizeRow(pet: pet)
+                ClipBindingRows(pet: pet)
                 Divider()
                 HStack {
                     Text("HerdPet \(HerdPet.version)").font(.caption2).foregroundStyle(.tertiary)
@@ -91,6 +92,41 @@ private struct PetSizeRow: View {
                     .buttonStyle(.bordered)
                     .controlSize(.small)
             }
+        }
+    }
+}
+
+/// Binds a spritesheet clip to each state. Collapsed by default: most packs
+/// come out right with the default row order, and the live pet is the preview.
+private struct ClipBindingRows: View {
+    @ObservedObject var pet: PetModel
+
+    var body: some View {
+        if pet.clipCount > 1 {
+            DisclosureGroup("Animation per state") {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(Mood.allCases, id: \.self) { mood in
+                        HStack(spacing: 8) {
+                            Text(mood.rawValue).font(.caption)
+                            Spacer()
+                            Picker("", selection: Binding(
+                                get: { pet.clip(for: mood) },
+                                set: { pet.bindClip($0, to: mood) }
+                            )) {
+                                ForEach(0..<pet.clipCount, id: \.self) { index in
+                                    Text("Clip \(index + 1)").tag(index)
+                                }
+                            }
+                            .labelsHidden()
+                            .pickerStyle(.menu)
+                            .controlSize(.small)
+                            .frame(width: 110)
+                        }
+                    }
+                }
+                .padding(.top, 4)
+            }
+            .font(.headline)
         }
     }
 }
