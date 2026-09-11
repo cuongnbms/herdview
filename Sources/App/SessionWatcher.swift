@@ -10,6 +10,7 @@ final class SessionWatcher {
     private let store: AgentStore
     private var forward: SSHForwardProcess?
     private var task: Task<Void, Never>?
+    private var stopped = false
 
     init(host: HostConfig, session: HerdrSession, store: AgentStore, socketBaseDir: String) {
         self.host = host
@@ -25,6 +26,7 @@ final class SessionWatcher {
     }
 
     func start() {
+        stopped = false
         forward?.start()
         let interval = UInt64(max(1, host.pollSeconds)) * 1_000_000_000
         task = Task { [weak self] in
@@ -36,6 +38,7 @@ final class SessionWatcher {
     }
 
     func stop() {
+        stopped = true
         task?.cancel()
         task = nil
         forward?.stop()
@@ -47,6 +50,7 @@ final class SessionWatcher {
         let outcome = await Task.detached(priority: .utility) {
             Result { try HerdrClient.agentList(socketPath: path) }
         }.value
+        guard !stopped, !Task.isCancelled else { return }
 
         switch outcome {
         case .success(let agents):
