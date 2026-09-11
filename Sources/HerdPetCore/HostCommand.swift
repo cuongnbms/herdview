@@ -1,0 +1,21 @@
+import Foundation
+
+/// A command to run for a host: directly for local, wrapped in ssh for remote.
+public struct HostCommand: Equatable, Sendable {
+    public let executable: String
+    public let arguments: [String]
+
+    public init(executable: String, arguments: [String]) {
+        self.executable = executable
+        self.arguments = arguments
+    }
+
+    public static func sessionList(for host: HostConfig) -> HostCommand {
+        if let ssh = host.ssh {
+            return HostCommand(
+                executable: "/usr/bin/ssh",
+                arguments: ["-o", "BatchMode=yes", "-o", "ConnectTimeout=10", ssh, "\(host.herdrPath) session list --json"])
+        }
+        return HostCommand(executable: host.herdrPath, arguments: ["session", "list", "--json"])
+    }
+}
