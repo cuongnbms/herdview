@@ -47,7 +47,8 @@ _Avoid_: Notification, toast
 
 **Pool**:
 The lines a Mood can say. Built in, or replaced per Mood by a non-empty list under
-`[messages]` in the config.
+`[messages]` in the config. Only the idle Pool reaches the screen now that the Roster
+speaks for every other Mood; the rest are still parsed so old configs keep working.
 
 **Since**:
 The moment HerdPet observed an Agent's current Status. Herdr does not report timestamps,

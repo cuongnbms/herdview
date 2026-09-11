@@ -29,9 +29,8 @@ working = 1
 blocked = 2
 done = 3
 
-[messages]                  # bubble lines per mood, optional
-blocked = ["I need you!", "Your turn 👀"]
-done = ["All done! ✅", "Ta-da!"]
+[messages]                  # idle chatter lines, optional
+idle = ["Let's grill some bugs.", "Ship something small."]
 
 [[hosts]]
 name = "local"
@@ -54,7 +53,9 @@ The pet's bubble always lists the agents that are doing something: one row per
 at most with the rest counted as `+N more`. A row tints for three seconds when
 its agent turns `blocked` or `done`. Only when nothing is running does the pet
 fall back to an idle line, re-picked every couple of minutes from a built-in
-English pool; a non-empty list under `[messages]` replaces that pool.
+English pool; a non-empty `idle` list under `[messages]` replaces that pool.
+The other moods now name agents instead of talking, so their pools are still
+parsed — an old config keeps working — but no longer shown.
 
 Every 30 seconds each host is asked `herdr session list --json`; every running
 session is polled every `poll_seconds` with `agent.list`. Remote sessions are
