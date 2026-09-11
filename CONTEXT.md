@@ -64,6 +64,12 @@ The sprite's edge length in points, 60 to 240, set by slider or S/M/L preset in 
 menu bar popover and remembered across launches. The pet's panel is sized from it and
 from the Roster's row count, and resizes around the pet's feet.
 
+**Animation speed**:
+The multiplier on the rate the pet's clips play at, 0.25× to 3×, set by slider or preset
+in the popover's settings page and remembered across launches. It scales each Mood's own
+rate, which is fixed: working animates at twice the calm rate before the multiplier.
+_Avoid_: FPS, playback rate, tempo
+
 **Pet pack**:
 A `pet.json` plus spritesheet directory under `~/.agentpet/pets/`, in AgentPet's format,
 sliced into one Clip per spritesheet row. The one shown is picked in the menu bar

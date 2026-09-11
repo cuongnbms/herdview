@@ -48,8 +48,22 @@ final class PetModel: ObservableObject {
     /// The size the panel must have to hold the sprite and the current bubble.
     @Published private(set) var panelSize: CGSize = .zero
 
+    /// Multiplier on every mood's frame rate, set in the settings page and
+    /// remembered across launches.
+    @Published var animationSpeed: Double = AnimationSpeed.defaultMultiplier {
+        didSet {
+            let clamped = AnimationSpeed.clamp(animationSpeed)
+            if clamped != animationSpeed {
+                animationSpeed = clamped
+                return
+            }
+            UserDefaults.standard.set(animationSpeed, forKey: Self.animationSpeedKey)
+        }
+    }
+
     private static let selectedPetKey = "herdpet.selectedPetID"
     private static let petSizeKey = "herdpet.petSize"
+    private static let animationSpeedKey = "herdpet.animationSpeed"
     private static func bindingsKey(_ packID: String) -> String { "herdpet.clips.\(packID)" }
     private let clips: [Mood: Int]
     private let messages: [Mood: [String]]
@@ -69,6 +83,9 @@ final class PetModel: ObservableObject {
         bindings = Self.loadBindings(packID: pack?.id, defaults: defaults)
         if let storedSize = defaults.object(forKey: Self.petSizeKey) as? Double {
             petPoint = PetSize.clamp(storedSize)
+        }
+        if let storedSpeed = defaults.object(forKey: Self.animationSpeedKey) as? Double {
+            animationSpeed = AnimationSpeed.clamp(storedSpeed)
         }
         moodDidChange()
         updatePanelSize()
@@ -126,8 +143,13 @@ final class PetModel: ObservableObject {
         return pack.clip(clip(for: mood))
     }
 
-    func fps(for mood: Mood) -> Double {
+    /// Working animates at twice the calm rate, before the speed multiplier.
+    private static func baseFps(for mood: Mood) -> Double {
         mood == .working ? 6 : 3
+    }
+
+    func fps(for mood: Mood) -> Double {
+        AnimationSpeed.fps(base: Self.baseFps(for: mood), multiplier: animationSpeed)
     }
 
     // MARK: Layout
