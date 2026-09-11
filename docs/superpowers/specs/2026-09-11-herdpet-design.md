@@ -127,7 +127,7 @@ Every `poll_seconds` it sends `agent.list` to its local socket path and hands th
 
 **SSHForward.** Spawns
 `/usr/bin/ssh -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o BatchMode=yes -L <local.sock>:<remote socket_path> <ssh>`.
-The local socket lives under `~/Library/Application Support/herdpet/sockets/<host>-<session>.sock`
+The local socket lives under `~/.herdpet/sock/<host>-<session>.sock` (a short path, because macOS caps Unix socket paths at 104 bytes)
 and is unlinked before every spawn. On exit it respawns with backoff 2, 4, 8 up to 60 seconds.
 
 **AgentStore.** `@MainActor ObservableObject`. Merges snapshots from all watchers, keeps the
