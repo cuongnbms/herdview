@@ -11,12 +11,18 @@ extension AgentStatus {
     /// Text stays on the label colours, because orange never reaches a readable
     /// contrast ratio against a light window at 11pt, and orange is the one
     /// colour this app cannot give up: it is what the menu bar item means.
-    var tint: Color {
+    var tint: Color { Color(nsColor: nsTint) }
+
+    /// The same colour as AppKit sees it. The blinking wash is drawn by a
+    /// `CALayer`, which needs a `CGColor` resolved against the current
+    /// appearance, so the definition lives here and `tint` is derived from it
+    /// rather than the two being written out separately and drifting apart.
+    var nsTint: NSColor {
         switch self {
-        case .blocked: return Color(nsColor: .systemOrange)
-        case .working: return Color(nsColor: .systemGreen)
-        case .done: return Color(nsColor: .systemBlue)
-        case .idle, .unknown: return Color(nsColor: .systemGray)
+        case .blocked: return .systemOrange
+        case .working: return .systemGreen
+        case .done: return .systemBlue
+        case .idle, .unknown: return .systemGray
         }
     }
 
@@ -27,11 +33,14 @@ extension AgentStatus {
         self == .blocked || self == .done
     }
 
-    /// How strongly a row wears its own colour on this half of the blink. The
-    /// dim end is not zero: a row that vanished into the background between
-    /// beats would read as a list flickering rather than as one agent asking.
-    func rowFillOpacity(bright: Bool) -> Double {
-        guard blinks else { return 0 }
-        return bright ? 0.24 : 0.05
+    /// The two ends the row's wash breathes between, or nil for a status that
+    /// does not blink. The dim end is not zero: a row that vanished into the
+    /// background between beats would read as a list flickering rather than as
+    /// one agent asking. The bright end has to carry a whole row of window
+    /// background, so it sits well above where the status pill's fill sits on
+    /// a patch the size of a word.
+    var washOpacity: (dim: Double, bright: Double)? {
+        guard blinks else { return nil }
+        return (dim: 0.06, bright: 0.34)
     }
 }

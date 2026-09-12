@@ -1,16 +1,21 @@
+import AppKit
 import SwiftUI
 import HerdviewCore
 
 /// What every host is running: a summary of the whole herd, then one section
 /// per host, most attention-worthy agent first. This is the window's whole
-/// content. The tick lives here, since the elapsed timers and the blink are
-/// the only things that move on their own; it runs at the blink's half-beat,
-/// which is the faster of the two.
+/// content. The tick lives here, and moves the elapsed times only: it runs at
+/// half a second so a row never shows a stale second. The blink is not on this
+/// clock at all — it is handed to Core Animation once and runs on its own.
 struct AgentListView: View {
+    /// Half a second, so the displayed second is never more than half a second
+    /// behind the real one.
+    private static let tick: TimeInterval = 0.5
+
     @ObservedObject var store: AgentStore
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: BlinkPhase.halfPeriod)) { context in
+        TimelineView(.periodic(from: .now, by: Self.tick)) { context in
             VStack(spacing: 0) {
                 SummaryBar(agents: store.agents)
                     .background(Color(nsColor: .windowBackgroundColor))
@@ -52,6 +57,10 @@ private enum Metrics {
     /// title lines up a fixed distance in from the host name above it.
     static let gutter: CGFloat = 12
     static let rowInset: CGFloat = 8
+    /// How far the blinking wash is held off the top and bottom of its row, so
+    /// that two blinking neighbours stay two rows instead of merging into one
+    /// block. Half the gap each, so the gap between them is twice this.
+    static let washInset: CGFloat = 1.5
 }
 
 // MARK: - Summary
@@ -227,14 +236,7 @@ private struct AgentRow: View {
         }
         .padding(.horizontal, Metrics.rowInset)
         .padding(.vertical, 7)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(rowFill)
-        )
-        // Keyed on the beat, not on `now`: the fill is meant to ease between
-        // the two ends of the blink, and a row whose only moving part is a
-        // clock should not animate anything at all.
-        .animation(.easeInOut(duration: 0.4), value: isBright)
+        .background(wash)
         .help(tooltip(for: text))
     }
 
@@ -243,11 +245,14 @@ private struct AgentRow: View {
     /// other row is plain. Rows do not light up under the pointer, because
     /// clicking one does nothing and a hover highlight would promise that it
     /// did.
-    private var rowFill: Color {
-        agent.status.tint.opacity(agent.status.rowFillOpacity(bright: isBright))
+    ///
+    /// The inset is applied out here rather than inside the wash so that the
+    /// layer being animated fills its own view exactly, with nothing between
+    /// the two to lay out.
+    private var wash: some View {
+        BlinkWash(status: agent.status)
+            .padding(.vertical, Metrics.washInset)
     }
-
-    private var isBright: Bool { BlinkPhase.isBright(at: now) }
 
     @ViewBuilder private var icon: some View {
         ZStack {
@@ -274,6 +279,104 @@ private struct AgentRow: View {
         let lead = agent.info.cwd.flatMap { $0.isEmpty ? nil : $0 } ?? text.primary
         guard let session = text.session else { return "\(lead)\n\(text.secondary)" }
         return "\(lead) · \(session)\n\(text.secondary)"
+    }
+}
+
+/// The breathing wash behind a blocked or done row.
+///
+/// Drawn by Core Animation rather than by SwiftUI. A wash redrawn through the
+/// view graph costs a whole `NSHostingView` layout pass per frame — measured
+/// at around fourteen points of CPU for two blinking rows, against a floor of
+/// four for the rest of the app put together. Handed to Core Animation, the
+/// interpolation happens on the render server: the app does nothing at all
+/// between the moment the animation is added and the moment the status
+/// changes, and the breath runs at the screen's own refresh rate instead of a
+/// rate this code had to pick.
+private struct BlinkWash: NSViewRepresentable {
+    let status: AgentStatus
+
+    func makeNSView(context: Context) -> WashView { WashView() }
+
+    func updateNSView(_ view: WashView, context: Context) {
+        view.show(status)
+    }
+}
+
+/// A single layer that holds the row's colour and breathes.
+private final class WashView: NSView {
+    private static let breathKey = "breath"
+    private var shown: AgentStatus?
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.cornerRadius = 8
+        layer?.cornerCurve = .continuous
+        layer?.opacity = 0
+    }
+
+    @available(*, unavailable) required init?(coder: NSCoder) { fatalError("not loaded from a nib") }
+
+    /// Nothing here reacts to the pointer: this is the row's background, and
+    /// letting it take part in hit testing would take the row's own tooltip
+    /// away from it.
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    /// The row above is rebuilt about twice a second, for the elapsed time and
+    /// for every snapshot the herd pushes, so this is called that often with
+    /// the status unchanged. Restarting the animation each time would jerk the
+    /// breath back to its beginning twice a second and put the cost straight
+    /// back; it must only act when something actually changed.
+    func show(_ status: AgentStatus) {
+        guard shown != status else { return }
+        shown = status
+        redraw()
+    }
+
+    /// A `CGColor` is resolved against whichever appearance was current when
+    /// it was made, and unlike a SwiftUI `Color` it does not follow the system
+    /// afterwards. Switching between light and dark has to resolve it again.
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        redraw()
+    }
+
+    /// A layer loses its animations when its view leaves the window, which
+    /// this one does every time the window is closed to the menu bar.
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window != nil { redraw() }
+    }
+
+    private func redraw() {
+        guard let layer, let status = shown else { return }
+        layer.removeAnimation(forKey: WashView.breathKey)
+
+        guard let ends = status.washOpacity else {
+            layer.opacity = 0
+            layer.backgroundColor = nil
+            return
+        }
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            layer.backgroundColor = status.nsTint.cgColor
+        }
+
+        let breath = CABasicAnimation(keyPath: "opacity")
+        breath.fromValue = ends.dim
+        breath.toValue = ends.bright
+        breath.duration = BlinkPhase.period / 2
+        breath.autoreverses = true
+        breath.repeatCount = .infinity
+        breath.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        // Wound forward to wherever the clock already is, so a row that
+        // appears now falls in step with the rows already breathing instead of
+        // starting a beat of its own.
+        let clock = CACurrentMediaTime()
+        breath.beginTime = layer.convertTime(clock, from: nil)
+            - BlinkPhase.secondsSinceDimmest(clock: clock)
+
+        layer.opacity = Float(ends.dim)
+        layer.add(breath, forKey: WashView.breathKey)
     }
 }
 
