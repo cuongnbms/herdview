@@ -3,13 +3,14 @@ import HerdPetCore
 
 /// What every host is running: a summary of the whole herd, then one section
 /// per host, most attention-worthy agent first. This is the window's whole
-/// content. The one-second tick lives here, since the elapsed timers are the
-/// only thing that moves on its own.
+/// content. The tick lives here, since the elapsed timers and the blink are
+/// the only things that move on their own; it runs at the blink's half-beat,
+/// which is the faster of the two.
 struct AgentListView: View {
     @ObservedObject var store: AgentStore
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 1)) { context in
+        TimelineView(.periodic(from: .now, by: BlinkPhase.halfPeriod)) { context in
             VStack(spacing: 0) {
                 SummaryBar(agents: store.agents)
                     .background(Color(nsColor: .windowBackgroundColor))
@@ -56,9 +57,9 @@ private enum Metrics {
 // MARK: - Summary
 
 /// The herd at a glance. Blocked is the only count that gets a filled chip:
-/// it is the only status that is asking for a person. Everything else is
-/// stated quietly, and when the herd is healthy this bar is meant to look
-/// uneventful.
+/// a done agent is also waiting on you, but only a blocked one is waiting
+/// before it can carry on. Everything else is stated quietly, and when the
+/// herd is healthy this bar is meant to look uneventful.
 private struct SummaryBar: View {
     let agents: [TrackedAgent]
 
@@ -139,7 +140,6 @@ private struct HostSection: View {
             ForEach(agents, id: \.key) { agent in
                 AgentRow(agent: agent,
                          displayName: names[agent.key] ?? agent.info.displayName,
-                         isHighlighted: store.highlighted.contains(agent.key),
                          now: now)
                     .padding(.horizontal, Metrics.gutter)
             }
@@ -191,7 +191,6 @@ private struct HostHeader: View {
 private struct AgentRow: View {
     let agent: TrackedAgent
     let displayName: String
-    let isHighlighted: Bool
     let now: Date
 
     var body: some View {
@@ -221,18 +220,23 @@ private struct AgentRow: View {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(rowFill)
         )
-        .animation(.easeInOut(duration: 0.25), value: isHighlighted)
+        // Keyed on the beat, not on `now`: the fill is meant to ease between
+        // the two ends of the blink, and a row whose only moving part is a
+        // clock should not animate anything at all.
+        .animation(.easeInOut(duration: 0.4), value: isBright)
         .help(fullPath)
     }
 
-    /// A flash wins over everything: it is the three seconds telling you this
-    /// agent just changed. Otherwise a row only wears colour if it is blocked.
-    /// Rows do not light up under the pointer, because clicking one does
-    /// nothing and a hover highlight would promise that it did.
+    /// A blocked or done row blinks for as long as it stays that way — it is
+    /// asking for a person, and it keeps asking until someone comes. Every
+    /// other row is plain. Rows do not light up under the pointer, because
+    /// clicking one does nothing and a hover highlight would promise that it
+    /// did.
     private var rowFill: Color {
-        if isHighlighted { return agent.status.tint.opacity(0.22) }
-        return agent.status.tint.opacity(agent.status.restingRowOpacity)
+        agent.status.tint.opacity(agent.status.rowFillOpacity(bright: isBright))
     }
+
+    private var isBright: Bool { BlinkPhase.isBright(at: now) }
 
     @ViewBuilder private var icon: some View {
         ZStack {

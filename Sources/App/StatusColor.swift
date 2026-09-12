@@ -3,9 +3,9 @@ import HerdPetCore
 
 extension AgentStatus {
     /// The one colour that carries this status everywhere it shows up: the
-    /// summary chips, the status pill, and the tint a row flashes on a
-    /// transition. System colours rather than fixed hex, so dark mode and the
-    /// Increase Contrast setting come for free.
+    /// summary chips, the status pill, and the wash a row blinks in. System
+    /// colours rather than fixed hex, so dark mode and the Increase Contrast
+    /// setting come for free.
     ///
     /// Colour is only ever put on a *shape* — a dot, a pill's fill, a row wash.
     /// Text stays on the label colours, because orange never reaches a readable
@@ -20,10 +20,18 @@ extension AgentStatus {
         }
     }
 
-    /// How strongly a row wears its own colour when nothing is flashing. Only
-    /// blocked agents are warm across the whole row; that band of colour down
-    /// the list is the thing you are meant to catch from across the desk.
-    var restingRowOpacity: Double {
-        self == .blocked ? 0.10 : 0
+    /// Whether a row in this status blinks. Both statuses here are asking for
+    /// a person — one to unblock the agent, one to collect what it finished —
+    /// and the movement is what you are meant to catch from across the desk.
+    var blinks: Bool {
+        self == .blocked || self == .done
+    }
+
+    /// How strongly a row wears its own colour on this half of the blink. The
+    /// dim end is not zero: a row that vanished into the background between
+    /// beats would read as a list flickering rather than as one agent asking.
+    func rowFillOpacity(bright: Bool) -> Double {
+        guard blinks else { return 0 }
+        return bright ? 0.24 : 0.05
     }
 }
