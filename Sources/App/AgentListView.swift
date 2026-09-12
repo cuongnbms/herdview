@@ -194,10 +194,24 @@ private struct AgentRow: View {
         HStack(spacing: 10) {
             icon
             VStack(alignment: .leading, spacing: 1) {
-                Text(text.primary)
-                    .font(.system(size: 13, weight: .medium))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                // The session keeps the quiet type it had when it sat on the
+                // second line: it says which herd the agent belongs to, not
+                // what the agent is, so it rides beside the name rather than
+                // competing with it.
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(text.primary)
+                        .font(.system(size: 13, weight: .medium))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    if let session = text.session {
+                        Text(session)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .layoutPriority(-1)
+                    }
+                }
                 Text(text.secondary)
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
@@ -253,14 +267,13 @@ private struct AgentRow: View {
         .frame(width: 24, height: 24)
     }
 
-    /// Both lines are truncated in the row, so the pointer can ask for the
+    /// Every line is truncated in the row, so the pointer can ask for the
     /// parts that did not fit — the directory spelled out in full, since that
     /// is the one the row shortens to its last component.
     private func tooltip(for text: AgentRowText) -> String {
-        guard let cwd = agent.info.cwd, !cwd.isEmpty else {
-            return "\(text.primary)\n\(text.secondary)"
-        }
-        return "\(cwd)\n\(text.secondary)"
+        let lead = agent.info.cwd.flatMap { $0.isEmpty ? nil : $0 } ?? text.primary
+        guard let session = text.session else { return "\(lead)\n\(text.secondary)" }
+        return "\(lead) · \(session)\n\(text.secondary)"
     }
 }
 

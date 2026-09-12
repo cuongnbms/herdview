@@ -1,28 +1,32 @@
 import Foundation
 
 /// The two lines of an agent's row. The working directory is what you scan a
-/// list of agents for, so it goes on top; the session and what the agent calls
-/// itself sit underneath.
+/// list of agents for, so it leads; the session rides quietly beside it, and
+/// what the agent calls itself goes underneath.
 public struct AgentRowText: Equatable, Sendable {
     public let primary: String
+    /// Sits next to `primary` in the smaller, quieter type. Nil when the
+    /// session is already the first line and repeating it would say nothing.
+    public let session: String?
     public let secondary: String
 
-    public init(primary: String, secondary: String) {
+    public init(primary: String, session: String?, secondary: String) {
         self.primary = primary
+        self.session = session
         self.secondary = secondary
     }
 }
 
-/// How an agent is named on screen. Neither the directory nor the title is
-/// always there, so whichever one is missing lets the other move up a line;
-/// nothing is ever printed on both lines at once.
+/// How an agent is named on screen. The working directory is not always there;
+/// when it is missing the session leads instead, and nothing is ever printed
+/// twice in the same row.
 public enum AgentTitles {
     public static func rowText(for agent: TrackedAgent) -> AgentRowText {
         let label = label(for: agent.info) ?? agent.info.paneId
         guard let directory = directory(for: agent.info) else {
-            return AgentRowText(primary: label, secondary: agent.session)
+            return AgentRowText(primary: agent.session, session: nil, secondary: label)
         }
-        return AgentRowText(primary: directory, secondary: "\(agent.session) · \(label)")
+        return AgentRowText(primary: directory, session: agent.session, secondary: label)
     }
 
     /// What the agent calls itself: the user-given name, else the terminal's

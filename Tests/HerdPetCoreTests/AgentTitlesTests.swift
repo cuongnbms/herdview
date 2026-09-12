@@ -20,26 +20,29 @@ final class AgentTitlesTests: XCTestCase {
                                        cwd: "/home/me/linkbee/bmx-core-service"))
         let text = AgentTitles.rowText(for: agent)
         XCTAssertEqual(text.primary, "bmx-core-service")
-        XCTAssertEqual(text.secondary, "blue-matrix · Track A Ingestion Contract review")
+        XCTAssertEqual(text.session, "blue-matrix")
+        XCTAssertEqual(text.secondary, "Track A Ingestion Contract review")
     }
 
     func testNameWinsOverTerminalTitle() {
         let agent = tracked(info: info(name: "handoff-b2-track-c-deliver",
                                        terminalTitleStripped: "B2 track C delivery handoff",
                                        cwd: "/home/me/svc"))
-        XCTAssertEqual(AgentTitles.rowText(for: agent).secondary, "s · handoff-b2-track-c-deliver")
+        let text = AgentTitles.rowText(for: agent)
+        XCTAssertEqual(text.session, "s")
+        XCTAssertEqual(text.secondary, "handoff-b2-track-c-deliver")
     }
 
     func testStrippedTerminalTitleBeatsRaw() {
         let agent = tracked(info: info(terminalTitle: "raw with \u{1B}[0m escapes",
                                        terminalTitleStripped: "MME forecast integration",
                                        cwd: "/home/me/svc"))
-        XCTAssertEqual(AgentTitles.rowText(for: agent).secondary, "s · MME forecast integration")
+        XCTAssertEqual(AgentTitles.rowText(for: agent).secondary, "MME forecast integration")
     }
 
     func testRawTerminalTitleUsedWhenStrippedMissing() {
         let agent = tracked(info: info(terminalTitle: "Some title", cwd: "/home/me/svc"))
-        XCTAssertEqual(AgentTitles.rowText(for: agent).secondary, "s · Some title")
+        XCTAssertEqual(AgentTitles.rowText(for: agent).secondary, "Some title")
     }
 
     func testBlankValuesAreSkipped() {
@@ -47,24 +50,26 @@ final class AgentTitlesTests: XCTestCase {
                                        cwd: "/home/me/bmx-core-service"))
         let text = AgentTitles.rowText(for: agent)
         XCTAssertEqual(text.primary, "bmx-core-service")
-        XCTAssertEqual(text.secondary, "s · w2:p4")
+        XCTAssertEqual(text.secondary, "w2:p4")
     }
 
-    /// Without a directory the title moves up, so the second line is the
-    /// session on its own rather than the title repeated.
-    func testTitleMovesUpWhenThereIsNoDirectory() {
+    /// Without a directory the session takes the first line on its own, rather
+    /// than standing next to a name that is not there.
+    func testSessionLeadsWhenThereIsNoDirectory() {
         let agent = tracked(session: "blue-matrix",
                             info: info(terminalTitleStripped: "Track A Ingestion Contract review"))
         let text = AgentTitles.rowText(for: agent)
-        XCTAssertEqual(text.primary, "Track A Ingestion Contract review")
-        XCTAssertEqual(text.secondary, "blue-matrix")
+        XCTAssertEqual(text.primary, "blue-matrix")
+        XCTAssertNil(text.session)
+        XCTAssertEqual(text.secondary, "Track A Ingestion Contract review")
     }
 
-    func testPaneIdIsTheLastResortOnBothLines() {
+    func testPaneIdIsTheLastResort() {
         let agent = tracked(info: info(paneId: "w1:p9"))
         let text = AgentTitles.rowText(for: agent)
-        XCTAssertEqual(text.primary, "w1:p9")
-        XCTAssertEqual(text.secondary, "s")
+        XCTAssertEqual(text.primary, "s")
+        XCTAssertNil(text.session)
+        XCTAssertEqual(text.secondary, "w1:p9")
     }
 
     /// Two panes in the same checkout share a first line on purpose; the
@@ -76,8 +81,8 @@ final class AgentTitlesTests: XCTestCase {
         ]
         XCTAssertEqual(AgentTitles.rowText(for: agents[0]).primary, "svc")
         XCTAssertEqual(AgentTitles.rowText(for: agents[1]).primary, "svc")
-        XCTAssertEqual(AgentTitles.rowText(for: agents[0]).secondary, "s · π - svc")
-        XCTAssertEqual(AgentTitles.rowText(for: agents[1]).secondary, "s · w2:p6")
+        XCTAssertEqual(AgentTitles.rowText(for: agents[0]).secondary, "π - svc")
+        XCTAssertEqual(AgentTitles.rowText(for: agents[1]).secondary, "w2:p6")
     }
 
     func testDecodesTerminalTitles() throws {
@@ -94,6 +99,7 @@ final class AgentTitlesTests: XCTestCase {
         XCTAssertEqual(a.terminalTitleStripped, "Track a việc cần làm, mục B2")
         let text = AgentTitles.rowText(for: tracked(session: "default", info: a))
         XCTAssertEqual(text.primary, "todo")
-        XCTAssertEqual(text.secondary, "default · Track a việc cần làm, mục B2")
+        XCTAssertEqual(text.session, "default")
+        XCTAssertEqual(text.secondary, "Track a việc cần làm, mục B2")
     }
 }
