@@ -1,0 +1,37 @@
+import XCTest
+@testable import HerdPetCore
+
+final class WindowPreferencesTests: XCTestCase {
+    private var defaults: UserDefaults!
+    private var suiteName: String!
+
+    override func setUp() {
+        super.setUp()
+        suiteName = "herdpet.tests.\(UUID().uuidString)"
+        defaults = UserDefaults(suiteName: suiteName)
+    }
+
+    override func tearDown() {
+        defaults.removePersistentDomain(forName: suiteName)
+        defaults = nil
+        suiteName = nil
+        super.tearDown()
+    }
+
+    func testAlwaysOnTopIsOffUntilTheUserAsksForIt() {
+        let prefs = WindowPreferences(defaults: defaults)
+        XCTAssertFalse(prefs.isAlwaysOnTop)
+    }
+
+    func testAlwaysOnTopSurvivesANewPreferencesObject() {
+        WindowPreferences(defaults: defaults).isAlwaysOnTop = true
+        XCTAssertTrue(WindowPreferences(defaults: defaults).isAlwaysOnTop)
+    }
+
+    func testTurningAlwaysOnTopBackOffSticks() {
+        let prefs = WindowPreferences(defaults: defaults)
+        prefs.isAlwaysOnTop = true
+        prefs.isAlwaysOnTop = false
+        XCTAssertFalse(WindowPreferences(defaults: defaults).isAlwaysOnTop)
+    }
+}

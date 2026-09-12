@@ -7,9 +7,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var monitor: Monitor?
     private var statusBar: StatusBarController?
     private var mainWindow: MainWindowController?
+    private var menuItems: MainMenu.Items?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
-        MainMenu.install()
+        menuItems = MainMenu.install()
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -20,7 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             store.configError = "\(ConfigLoader.defaultPath): \(error)"
         }
 
-        let window = MainWindowController(store: store)
+        let window = MainWindowController(store: store, keepOnTopItem: menuItems?.keepOnTop)
         mainWindow = window
         window.show()
 

@@ -41,7 +41,10 @@ long it has held that status. Blocked rows stay tinted orange for as long as the
 are blocked, so a glance at the window answers whether anything is waiting on
 you; any row tints for three seconds when its agent turns `blocked` or `done`.
 The list scrolls and the host headings stay put as it does. The window remembers
-where you put it and how big you made it.
+where you put it and how big you made it. `Keep on Top` in the Window menu
+(⌘T) makes it float above other apps' windows so the herd stays readable while
+you work elsewhere; it is off until you ask for it, and remembered between
+launches.
 
 The menu bar item shows how many agents are `blocked`, in orange, and clicking it
 shows or hides the window. Closing the window does not quit the app: the herd

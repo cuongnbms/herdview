@@ -6,7 +6,15 @@ import AppKit
 /// where ⌘Q lives, and nothing appears at all without one.
 @MainActor
 enum MainMenu {
-    static func install(appName: String = "HerdPet") {
+    /// The items the menu cannot wire up itself. The menu is built before the
+    /// window exists, so `Keep on Top` goes back to the caller to point at the
+    /// window controller once there is one.
+    struct Items {
+        let keepOnTop: NSMenuItem
+    }
+
+    @discardableResult
+    static func install(appName: String = "HerdPet") -> Items {
         let main = NSMenu()
 
         let appItem = NSMenuItem()
@@ -43,11 +51,16 @@ enum MainMenu {
                            action: #selector(NSWindow.performZoom(_:)),
                            keyEquivalent: "")
         windowMenu.addItem(.separator())
+        let keepOnTop = windowMenu.addItem(withTitle: "Keep on Top",
+                                           action: nil,
+                                           keyEquivalent: "t")
+        windowMenu.addItem(.separator())
         windowMenu.addItem(withTitle: "Bring All to Front",
                            action: #selector(NSApplication.arrangeInFront(_:)),
                            keyEquivalent: "")
 
         NSApp.mainMenu = main
         NSApp.windowsMenu = windowMenu
+        return Items(keepOnTop: keepOnTop)
     }
 }
