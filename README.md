@@ -34,10 +34,14 @@ A config from an older version may still carry `pet`, `[clips]` or `[messages]`.
 Those keys are ignored — HerdPet has no pet to configure any more — and the file
 loads as it always did.
 
-The window lists every agent, one section per host: its name, its session and
-short working directory, its status, and how long it has held that status. A row
-tints for three seconds when its agent turns `blocked` or `done`. The window
-remembers where you put it and how big you made it.
+A bar across the top counts the herd: how many agents are blocked, and quietly
+how many are working or done. Below it the window lists every agent, one section
+per host: its name, its session and short working directory, its status, and how
+long it has held that status. Blocked rows stay tinted orange for as long as they
+are blocked, so a glance at the window answers whether anything is waiting on
+you; any row tints for three seconds when its agent turns `blocked` or `done`.
+The list scrolls and the host headings stay put as it does. The window remembers
+where you put it and how big you made it.
 
 The menu bar item shows how many agents are `blocked`, in orange, and clicking it
 shows or hides the window. Closing the window does not quit the app: the herd
