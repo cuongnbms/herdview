@@ -31,18 +31,18 @@ final class HerdrProtocolTests: XCTestCase {
         XCTAssertEqual(a.cwd, "/home/me/proj")
         XCTAssertEqual(a.agentStatus, .working)
         XCTAssertEqual(a.revision, 42)
-        XCTAssertEqual(a.displayName, "reviewer")
     }
 
-    func testDisplayNameFallsBackToPaneId() throws {
+    func testMinimalRecordDecodesWithOptionalFieldsNil() throws {
         let json = """
         {"id":"r","result":{"type":"agent_list","agents":[
           {"agent_status":"idle","workspace_id":"w1","pane_id":"w1:p2","revision":1}
         ]}}
         """
         let result = try HerdrProtocol.decodeResult(Data(json.utf8), as: AgentListResult.self)
-        XCTAssertEqual(result.agents[0].displayName, "w1:p2")
+        XCTAssertEqual(result.agents[0].paneId, "w1:p2")
         XCTAssertNil(result.agents[0].name)
+        XCTAssertNil(result.agents[0].cwd)
     }
 
     func testUnknownStatusDecodesAsUnknown() throws {

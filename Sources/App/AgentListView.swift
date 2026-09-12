@@ -128,7 +128,6 @@ private struct HostSection: View {
     var body: some View {
         let agents = store.agents(forHost: host)
         let unreachable = store.unreachableHosts.contains(host)
-        let names = AgentTitles.displayNames(for: agents)
         Section {
             if agents.isEmpty {
                 Notice(symbol: unreachable ? "antenna.radiowaves.left.and.right.slash" : "moon.zzz",
@@ -138,9 +137,7 @@ private struct HostSection: View {
                     .padding(.vertical, 6)
             }
             ForEach(agents, id: \.key) { agent in
-                AgentRow(agent: agent,
-                         displayName: names[agent.key] ?? agent.info.displayName,
-                         now: now)
+                AgentRow(agent: agent, now: now)
                     .padding(.horizontal, Metrics.gutter)
             }
         } header: {
@@ -190,18 +187,18 @@ private struct HostHeader: View {
 
 private struct AgentRow: View {
     let agent: TrackedAgent
-    let displayName: String
     let now: Date
 
     var body: some View {
+        let text = AgentTitles.rowText(for: agent)
         HStack(spacing: 10) {
             icon
             VStack(alignment: .leading, spacing: 1) {
-                Text(displayName)
+                Text(text.primary)
                     .font(.system(size: 13, weight: .medium))
                     .lineLimit(1)
                     .truncationMode(.middle)
-                Text(subtitle)
+                Text(text.secondary)
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -224,7 +221,7 @@ private struct AgentRow: View {
         // the two ends of the blink, and a row whose only moving part is a
         // clock should not animate anything at all.
         .animation(.easeInOut(duration: 0.4), value: isBright)
-        .help(fullPath)
+        .help(tooltip(for: text))
     }
 
     /// A blocked or done row blinks for as long as it stays that way — it is
@@ -256,16 +253,14 @@ private struct AgentRow: View {
         .frame(width: 24, height: 24)
     }
 
-    private var subtitle: String {
-        let cwd = agent.info.cwd.map { URL(fileURLWithPath: $0).lastPathComponent } ?? ""
-        return cwd.isEmpty ? agent.session : "\(agent.session) · \(cwd)"
-    }
-
-    /// Names and directories are both truncated in the row, so the pointer can
-    /// ask for the parts that did not fit.
-    private var fullPath: String {
-        let cwd = agent.info.cwd ?? ""
-        return cwd.isEmpty ? displayName : "\(displayName)\n\(cwd)"
+    /// Both lines are truncated in the row, so the pointer can ask for the
+    /// parts that did not fit — the directory spelled out in full, since that
+    /// is the one the row shortens to its last component.
+    private func tooltip(for text: AgentRowText) -> String {
+        guard let cwd = agent.info.cwd, !cwd.isEmpty else {
+            return "\(text.primary)\n\(text.secondary)"
+        }
+        return "\(cwd)\n\(text.secondary)"
     }
 }
 

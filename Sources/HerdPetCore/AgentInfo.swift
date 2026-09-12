@@ -45,8 +45,4 @@ public struct AgentInfo: Codable, Equatable, Sendable {
         self.agentStatus = agentStatus
         self.revision = revision
     }
-
-    /// The user-given agent name when there is one, else the terminal's own
-    /// title, else the working directory, else the pane id. See `AgentTitles`.
-    public var displayName: String { AgentTitles.baseTitle(for: self) }
 }

@@ -1,44 +1,42 @@
 import Foundation
 
-/// How an agent is named on screen. Most panes are never named, so the title
-/// falls back to what is most recognizable: the terminal's own title (set by
-/// the running agent, e.g. "MME forecast integration"), then the working
-/// directory, and only last the pane id.
+/// The two lines of an agent's row. The working directory is what you scan a
+/// list of agents for, so it goes on top; the session and what the agent calls
+/// itself sit underneath.
+public struct AgentRowText: Equatable, Sendable {
+    public let primary: String
+    public let secondary: String
+
+    public init(primary: String, secondary: String) {
+        self.primary = primary
+        self.secondary = secondary
+    }
+}
+
+/// How an agent is named on screen. Neither the directory nor the title is
+/// always there, so whichever one is missing lets the other move up a line;
+/// nothing is ever printed on both lines at once.
 public enum AgentTitles {
-    /// The title for one agent, before disambiguation.
-    public static func baseTitle(for info: AgentInfo) -> String {
-        if let name = nonBlank(info.name) { return name }
-        if let title = nonBlank(info.terminalTitleStripped) { return title }
-        if let title = nonBlank(info.terminalTitle) { return title }
-        if let cwd = nonBlank(info.cwd) { return URL(fileURLWithPath: cwd).lastPathComponent }
-        return info.paneId
-    }
-
-    /// Display names keyed by agent key. Agents on the same host that would
-    /// otherwise share a title (e.g. two unnamed pi panes both titled
-    /// "π - bmx-core-service") get a pane suffix so the rows stay apart.
-    /// Uniquely titled agents are returned unchanged.
-    public static func displayNames(for agents: [TrackedAgent]) -> [String: String] {
-        var result: [String: String] = [:]
-        for hostGroup in Dictionary(grouping: agents, by: \.host).values {
-            var counts: [String: Int] = [:]
-            for agent in hostGroup { counts[baseTitle(for: agent.info), default: 0] += 1 }
-            for agent in hostGroup {
-                let base = baseTitle(for: agent.info)
-                if counts[base, default: 0] > 1 {
-                    result[agent.key] = "\(base) · \(shortPaneId(agent.info.paneId))"
-                } else {
-                    result[agent.key] = base
-                }
-            }
+    public static func rowText(for agent: TrackedAgent) -> AgentRowText {
+        let label = label(for: agent.info) ?? agent.info.paneId
+        guard let directory = directory(for: agent.info) else {
+            return AgentRowText(primary: label, secondary: agent.session)
         }
-        return result
+        return AgentRowText(primary: directory, secondary: "\(agent.session) · \(label)")
     }
 
-    /// The short end of a pane id: "w2:p6" to "p6". Falls back to the full id
-    /// when it has no colon.
-    public static func shortPaneId(_ paneId: String) -> String {
-        paneId.split(separator: ":").last.map(String.init) ?? paneId
+    /// What the agent calls itself: the user-given name, else the terminal's
+    /// own title (set by the running agent, e.g. "MME forecast integration").
+    /// Nil when it has neither. The working directory is deliberately not a
+    /// fallback: it is the line above.
+    static func label(for info: AgentInfo) -> String? {
+        nonBlank(info.name) ?? nonBlank(info.terminalTitleStripped) ?? nonBlank(info.terminalTitle)
+    }
+
+    /// The last component of the agent's working directory.
+    static func directory(for info: AgentInfo) -> String? {
+        guard let cwd = nonBlank(info.cwd) else { return nil }
+        return nonBlank(URL(fileURLWithPath: cwd).lastPathComponent)
     }
 
     private static func nonBlank(_ value: String?) -> String? {

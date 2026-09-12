@@ -36,11 +36,13 @@ loads as it always did.
 
 A bar across the top counts the herd: how many agents are blocked, and quietly
 how many are working or done. Below it the window lists every agent, one section
-per host: its name, its session and short working directory, its status, and
-how long it has held that status. A row blinks for as long as its agent is
-`blocked` (orange) or `done` (blue) — the two statuses that are asking for a
-person — so a glance at the window answers whether anything is waiting on you,
-and it keeps asking until you come. Every blinking row pulses in step.
+per host: the directory it is working in, then its session and what the agent
+calls itself, its status, and how long it has held that status. Where an agent
+has no working directory its own name moves up to the first line. A row blinks
+for as long as its agent is `blocked` (orange) or `done` (blue) — the two
+statuses that are asking for a person — so a glance at the window answers
+whether anything is waiting on you, and it keeps asking until you come. Every
+blinking row pulses in step.
 The list scrolls and the host headings stay put as it does. The window remembers
 where you put it and how big you made it. `Keep on Top` in the Window menu
 (⌘T) makes it float above other apps' windows so the herd stays readable while

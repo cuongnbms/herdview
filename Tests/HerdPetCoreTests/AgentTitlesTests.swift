@@ -14,42 +14,77 @@ final class AgentTitlesTests: XCTestCase {
         TrackedAgent(host: host, session: session, info: info, since: Date())
     }
 
+    func testDirectoryOnTopSessionAndTitleBelow() {
+        let agent = tracked(session: "blue-matrix",
+                            info: info(terminalTitleStripped: "Track A Ingestion Contract review",
+                                       cwd: "/home/me/linkbee/bmx-core-service"))
+        let text = AgentTitles.rowText(for: agent)
+        XCTAssertEqual(text.primary, "bmx-core-service")
+        XCTAssertEqual(text.secondary, "blue-matrix · Track A Ingestion Contract review")
+    }
+
     func testNameWinsOverTerminalTitle() {
-        let info = info(name: "handoff-b2-track-c-deliver",
-                        terminalTitleStripped: "B2 track C delivery handoff")
-        XCTAssertEqual(AgentTitles.baseTitle(for: info), "handoff-b2-track-c-deliver")
+        let agent = tracked(info: info(name: "handoff-b2-track-c-deliver",
+                                       terminalTitleStripped: "B2 track C delivery handoff",
+                                       cwd: "/home/me/svc"))
+        XCTAssertEqual(AgentTitles.rowText(for: agent).secondary, "s · handoff-b2-track-c-deliver")
     }
 
     func testStrippedTerminalTitleBeatsRaw() {
-        let info = info(terminalTitle: "raw with \u{1B}[0m escapes",
-                        terminalTitleStripped: "MME forecast integration")
-        XCTAssertEqual(AgentTitles.baseTitle(for: info), "MME forecast integration")
+        let agent = tracked(info: info(terminalTitle: "raw with \u{1B}[0m escapes",
+                                       terminalTitleStripped: "MME forecast integration",
+                                       cwd: "/home/me/svc"))
+        XCTAssertEqual(AgentTitles.rowText(for: agent).secondary, "s · MME forecast integration")
     }
 
     func testRawTerminalTitleUsedWhenStrippedMissing() {
-        let info = info(terminalTitle: "Some title")
-        XCTAssertEqual(AgentTitles.baseTitle(for: info), "Some title")
+        let agent = tracked(info: info(terminalTitle: "Some title", cwd: "/home/me/svc"))
+        XCTAssertEqual(AgentTitles.rowText(for: agent).secondary, "s · Some title")
     }
 
     func testBlankValuesAreSkipped() {
-        let info = info(name: "  ", terminalTitleStripped: "", cwd: "/home/me/bmx-core-service")
-        XCTAssertEqual(AgentTitles.baseTitle(for: info), "bmx-core-service")
+        let agent = tracked(info: info(paneId: "w2:p4", name: "  ", terminalTitleStripped: "",
+                                       cwd: "/home/me/bmx-core-service"))
+        let text = AgentTitles.rowText(for: agent)
+        XCTAssertEqual(text.primary, "bmx-core-service")
+        XCTAssertEqual(text.secondary, "s · w2:p4")
     }
 
-    func testCwdBasenameBeatsPaneId() {
-        let info = info(cwd: "/home/cuongnb/Workspace/works/linkbee/blue-matrix/bmx-core-service")
-        XCTAssertEqual(AgentTitles.baseTitle(for: info), "bmx-core-service")
+    /// Without a directory the title moves up, so the second line is the
+    /// session on its own rather than the title repeated.
+    func testTitleMovesUpWhenThereIsNoDirectory() {
+        let agent = tracked(session: "blue-matrix",
+                            info: info(terminalTitleStripped: "Track A Ingestion Contract review"))
+        let text = AgentTitles.rowText(for: agent)
+        XCTAssertEqual(text.primary, "Track A Ingestion Contract review")
+        XCTAssertEqual(text.secondary, "blue-matrix")
     }
 
-    func testPaneIdIsLastResort() {
-        XCTAssertEqual(AgentTitles.baseTitle(for: info(paneId: "w1:p9")), "w1:p9")
+    func testPaneIdIsTheLastResortOnBothLines() {
+        let agent = tracked(info: info(paneId: "w1:p9"))
+        let text = AgentTitles.rowText(for: agent)
+        XCTAssertEqual(text.primary, "w1:p9")
+        XCTAssertEqual(text.secondary, "s")
+    }
+
+    /// Two panes in the same checkout share a first line on purpose; the
+    /// second line is what tells them apart, so no pane suffix is added.
+    func testPanesSharingADirectoryKeepTheirDirectoryName() {
+        let agents = [
+            tracked(info: info(paneId: "w2:p3", terminalTitleStripped: "π - svc", cwd: "/home/me/svc")),
+            tracked(info: info(paneId: "w2:p6", cwd: "/home/me/svc")),
+        ]
+        XCTAssertEqual(AgentTitles.rowText(for: agents[0]).primary, "svc")
+        XCTAssertEqual(AgentTitles.rowText(for: agents[1]).primary, "svc")
+        XCTAssertEqual(AgentTitles.rowText(for: agents[0]).secondary, "s · π - svc")
+        XCTAssertEqual(AgentTitles.rowText(for: agents[1]).secondary, "s · w2:p6")
     }
 
     func testDecodesTerminalTitles() throws {
         let json = """
         {"id":"q","result":{"type":"agent_list","agents":[
           {"agent_status":"idle","workspace_id":"w2","pane_id":"w2:p1","revision":6,
-           "terminal_title":"✳ Track a việc cần làm, mục B2",
+           "cwd":"/home/me/todo","terminal_title":"✳ Track a việc cần làm, mục B2",
            "terminal_title_stripped":"Track a việc cần làm, mục B2"}
         ]}}
         """
@@ -57,41 +92,8 @@ final class AgentTitlesTests: XCTestCase {
         let a = result.agents[0]
         XCTAssertEqual(a.terminalTitle, "✳ Track a việc cần làm, mục B2")
         XCTAssertEqual(a.terminalTitleStripped, "Track a việc cần làm, mục B2")
-        XCTAssertEqual(a.displayName, "Track a việc cần làm, mục B2")
-    }
-
-    func testDuplicateTitlesOnSameHostGetPaneSuffix() {
-        let agents = [
-            tracked(info: info(paneId: "w2:p3", terminalTitleStripped: "π - bmx-core-service")),
-            tracked(info: info(paneId: "w2:p6", terminalTitleStripped: "π - bmx-core-service")),
-        ]
-        let names = AgentTitles.displayNames(for: agents)
-        XCTAssertEqual(names[agents[0].key], "π - bmx-core-service · p3")
-        XCTAssertEqual(names[agents[1].key], "π - bmx-core-service · p6")
-    }
-
-    func testSameTitleOnDifferentHostsIsNotSuffixed() {
-        let agents = [
-            tracked(host: "a", info: info(terminalTitleStripped: "π - svc")),
-            tracked(host: "b", info: info(terminalTitleStripped: "π - svc")),
-        ]
-        let names = AgentTitles.displayNames(for: agents)
-        XCTAssertEqual(names[agents[0].key], "π - svc")
-        XCTAssertEqual(names[agents[1].key], "π - svc")
-    }
-
-    func testUniqueTitlesAreUnchanged() {
-        let agents = [
-            tracked(info: info(paneId: "w2:p1", terminalTitleStripped: "Track a việc cần làm")),
-            tracked(info: info(paneId: "w2:p5", terminalTitleStripped: "MME forecast integration")),
-        ]
-        let names = AgentTitles.displayNames(for: agents)
-        XCTAssertEqual(names[agents[0].key], "Track a việc cần làm")
-        XCTAssertEqual(names[agents[1].key], "MME forecast integration")
-    }
-
-    func testShortPaneId() {
-        XCTAssertEqual(AgentTitles.shortPaneId("w2:p6"), "p6")
-        XCTAssertEqual(AgentTitles.shortPaneId("p6"), "p6")
+        let text = AgentTitles.rowText(for: tracked(session: "default", info: a))
+        XCTAssertEqual(text.primary, "todo")
+        XCTAssertEqual(text.secondary, "default · Track a việc cần làm, mục B2")
     }
 }
