@@ -102,4 +102,36 @@ final class AgentTitlesTests: XCTestCase {
         XCTAssertEqual(text.session, "default")
         XCTAssertEqual(text.secondary, "Track a việc cần làm, mục B2")
     }
+    /// An agent's working directory belongs to the host the agent runs on, not
+    /// to this Mac, so naming its last component must never touch the local
+    /// file system. `URL(fileURLWithPath:)` does: it stats the path, and under
+    /// `/home` — an autofs trigger on macOS — that stat waits on `automountd`
+    /// for about ten milliseconds. The row is rebuilt several times a second
+    /// for every agent in the list, so a lookup that slow freezes the window.
+    func testNamesTheDirectoryWithoutAskingTheFileSystem() {
+        let remote = info(cwd: "/home/me/linkbee/bmx-core-service")
+        let start = Date()
+        for _ in 0..<200 { _ = AgentTitles.rowText(for: tracked(info: remote)) }
+        let elapsed = Date().timeIntervalSince(start)
+        XCTAssertLessThan(elapsed, 0.2,
+                          "200 lookups took \(elapsed)s — a path under /home is being stat'd")
+    }
+
+    /// Whatever shape the remote path arrives in, the last component is what
+    /// the row shows, and a path that names nothing shows nothing.
+    func testDirectoryShapes() {
+        func primary(_ cwd: String?) -> String {
+            AgentTitles.rowText(for: tracked(info: info(cwd: cwd))).primary
+        }
+        XCTAssertEqual(primary("/home/me/svc"), "svc")
+        XCTAssertEqual(primary("/home/me/svc/"), "svc")
+        XCTAssertEqual(primary("/home/me/svc///"), "svc")
+        XCTAssertEqual(primary("svc"), "svc")
+        // Nothing to name: the session leads instead.
+        XCTAssertEqual(primary("/"), "s")
+        XCTAssertEqual(primary("///"), "s")
+        XCTAssertEqual(primary("   "), "s")
+        XCTAssertEqual(primary(nil), "s")
+    }
+
 }

@@ -38,9 +38,21 @@ public enum AgentTitles {
     }
 
     /// The last component of the agent's working directory.
+    ///
+    /// Split by hand rather than through `URL(fileURLWithPath:)`. That path
+    /// belongs to the host the agent runs on, not to this Mac, so there is
+    /// nothing here to ask the disk about — and asking is expensive: the
+    /// initialiser stats the path, and under `/home`, which macOS keeps as an
+    /// autofs trigger, the stat waits on `automountd` for about ten
+    /// milliseconds. Every agent's row is rebuilt several times a second, so
+    /// that lookup alone was enough to freeze the window between frames.
+    ///
+    /// Dropping empty components also gives trailing slashes and a path that
+    /// is nothing but slashes the right answer for free.
     static func directory(for info: AgentInfo) -> String? {
-        guard let cwd = nonBlank(info.cwd) else { return nil }
-        return nonBlank(URL(fileURLWithPath: cwd).lastPathComponent)
+        guard let cwd = nonBlank(info.cwd),
+              let last = cwd.split(separator: "/").last else { return nil }
+        return nonBlank(String(last))
     }
 
     private static func nonBlank(_ value: String?) -> String? {
