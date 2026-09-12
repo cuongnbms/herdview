@@ -1,5 +1,5 @@
 import Foundation
-import HerdPetCore
+import HerdviewCore
 
 /// Keeps one `ssh -N -L` forward alive. Respawns with backoff 2, 4, 8 ... 60s;
 /// the backoff resets only after a forward that lived at least 30 seconds.
@@ -45,7 +45,7 @@ final class SSHForwardProcess {
             process = p
             startedAt = Date()
         } catch {
-            NSLog("herdpet: cannot spawn ssh for %@: %@", spec.sshTarget, error.localizedDescription)
+            NSLog("herdview: cannot spawn ssh for %@: %@", spec.sshTarget, error.localizedDescription)
             scheduleRespawn()
         }
     }
@@ -54,7 +54,7 @@ final class SSHForwardProcess {
         process = nil
         guard !stopped else { return }
         if Date().timeIntervalSince(startedAt) >= 30 { backoff = 2 }
-        NSLog("herdpet: ssh forward to %@ exited (%d), retrying in %.0fs", spec.sshTarget, code, backoff)
+        NSLog("herdview: ssh forward to %@ exited (%d), retrying in %.0fs", spec.sshTarget, code, backoff)
         scheduleRespawn()
     }
 

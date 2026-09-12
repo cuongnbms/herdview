@@ -1,6 +1,6 @@
 import AppKit
 
-/// The menu a normal app has to have. HerdPet had none while it was a menu bar
+/// The menu a normal app has to have. Herdview had none while it was a menu bar
 /// agent: it had no window to close and nothing to quit from, so the pet's
 /// popover carried a Quit button instead. With a real window the app menu is
 /// where ⌘Q lives, and nothing appears at all without one.
@@ -14,7 +14,7 @@ enum MainMenu {
     }
 
     @discardableResult
-    static func install(appName: String = "HerdPet") -> Items {
+    static func install(appName: String = "Herdview") -> Items {
         let main = NSMenu()
 
         let appItem = NSMenuItem()

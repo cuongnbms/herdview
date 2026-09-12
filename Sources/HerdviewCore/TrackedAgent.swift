@@ -1,12 +1,12 @@
 import Foundation
 
-/// An agent HerdPet is tracking, with the moment its current status was observed.
+/// An agent Herdview is tracking, with the moment its current status was observed.
 public struct TrackedAgent: Equatable, Sendable {
     public let key: String
     public let host: String
     public let session: String
     public var info: AgentInfo
-    /// When HerdPet observed the current status. Herdr reports no timestamps,
+    /// When Herdview observed the current status. Herdr reports no timestamps,
     /// so this is observation time, not the real change time.
     public var since: Date
 

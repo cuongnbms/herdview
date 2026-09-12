@@ -1,5 +1,5 @@
 import Foundation
-import HerdPetCore
+import HerdviewCore
 
 /// Polls one running Herdr session with `agent.list` every `pollSeconds`.
 @MainActor
@@ -59,7 +59,7 @@ final class SessionWatcher {
             if case HerdrClientError.serverNotRunning = error {
                 store.apply(host: host.name, session: session.name, snapshot: [])
             } else {
-                NSLog("herdpet: %@/%@ poll failed: %@", host.name, session.name, String(describing: error))
+                NSLog("herdview: %@/%@ poll failed: %@", host.name, session.name, String(describing: error))
             }
         }
     }

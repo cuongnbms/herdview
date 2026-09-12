@@ -1,5 +1,5 @@
 import Foundation
-import HerdPetCore
+import HerdviewCore
 
 /// Discovers running sessions on one host every 30 seconds and keeps one
 /// `SessionWatcher` per running session.
@@ -41,7 +41,7 @@ final class HostRunner {
             let output = try await ProcessRunner.run(HostCommand.sessionList(for: host))
             sessions = try SessionDiscovery.parse(output)
         } catch {
-            NSLog("herdpet: discovery failed on %@: %@", host.name, String(describing: error))
+            NSLog("herdview: discovery failed on %@: %@", host.name, String(describing: error))
             store.setReachable(host: host.name, false)
             return
         }

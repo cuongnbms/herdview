@@ -1,6 +1,6 @@
 import Foundation
 import Combine
-import HerdPetCore
+import HerdviewCore
 
 /// Merged view of every watched session. Owned by the main actor; the UI observes it.
 @MainActor

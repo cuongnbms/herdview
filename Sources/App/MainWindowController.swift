@@ -1,5 +1,5 @@
 import AppKit
-import HerdPetCore
+import HerdviewCore
 import SwiftUI
 
 /// The app's one window: the agent list in a normal title bar window that can be
@@ -12,7 +12,7 @@ import SwiftUI
 /// off by default and remembered between launches.
 @MainActor
 final class MainWindowController: NSObject {
-    private static let frameAutosaveName = "herdpet.mainWindow"
+    private static let frameAutosaveName = "herdview.mainWindow"
 
     private let window: NSWindow
     private let preferences: WindowPreferences
@@ -29,7 +29,7 @@ final class MainWindowController: NSObject {
             backing: .buffered,
             defer: false
         )
-        window.title = "HerdPet"
+        window.title = "Herdview"
         window.contentMinSize = NSSize(width: 360, height: 240)
         window.isReleasedWhenClosed = false
         window.contentViewController = NSHostingController(rootView: AgentListView(store: store))

@@ -1,5 +1,5 @@
 import Foundation
-import HerdPetCore
+import HerdviewCore
 
 enum ProcessRunnerError: Error, CustomStringConvertible {
     case launchFailed(String)

@@ -1,5 +1,5 @@
 import XCTest
-@testable import HerdPetCore
+@testable import HerdviewCore
 
 final class HostCommandTests: XCTestCase {
     func testLocalHostRunsHerdrDirectly() {

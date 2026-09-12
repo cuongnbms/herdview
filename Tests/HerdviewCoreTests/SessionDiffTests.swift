@@ -1,5 +1,5 @@
 import XCTest
-@testable import HerdPetCore
+@testable import HerdviewCore
 
 final class SessionDiffTests: XCTestCase {
     private func session(_ name: String, running: Bool) -> HerdrSession {

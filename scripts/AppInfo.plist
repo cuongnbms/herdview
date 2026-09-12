@@ -5,15 +5,15 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>HerdPet</string>
+	<string>Herdview</string>
 	<key>CFBundleExecutable</key>
-	<string>herdpet</string>
+	<string>herdview</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.herdpet.app</string>
+	<string>com.herdview.app</string>
 	<key>CFBundleName</key>
-	<string>HerdPet</string>
+	<string>Herdview</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

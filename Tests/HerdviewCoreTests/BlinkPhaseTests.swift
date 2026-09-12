@@ -1,5 +1,5 @@
 import XCTest
-@testable import HerdPetCore
+@testable import HerdviewCore
 
 final class BlinkPhaseTests: XCTestCase {
     /// Reference date itself starts on a bright half-beat, so every assertion

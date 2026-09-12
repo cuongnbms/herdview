@@ -1,7 +1,7 @@
 #!/usr/bin/env swift
-// Draws HerdPet's app icon and packs it into scripts/AppIcon.icns.
+// Draws Herdview's app icon and packs it into scripts/AppIcon.icns.
 //
-// Ported from AgentPet's `scripts/make-icon.swift`, which HerdPet grew out of:
+// Ported from AgentPet's `scripts/make-icon.swift`, which Herdview grew out of:
 // a squircle in one colour with a white pawprint on it. The paw is
 // `pawprint.fill`, the same SF Symbol the menu bar item uses, so the app is the
 // same shape in the Dock as it is on the menu bar.

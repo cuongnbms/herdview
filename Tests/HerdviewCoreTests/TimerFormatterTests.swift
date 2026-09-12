@@ -1,5 +1,5 @@
 import XCTest
-@testable import HerdPetCore
+@testable import HerdviewCore
 
 final class TimerFormatterTests: XCTestCase {
     private let start = Date(timeIntervalSince1970: 0)

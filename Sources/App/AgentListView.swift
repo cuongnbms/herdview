@@ -1,5 +1,5 @@
 import SwiftUI
-import HerdPetCore
+import HerdviewCore
 
 /// What every host is running: a summary of the whole herd, then one section
 /// per host, most attention-worthy agent first. This is the window's whole

@@ -1,4 +1,4 @@
-# HerdPet
+# Herdview
 
 A macOS app that mirrors the live state of coding agents running inside Herdr, on the
 local machine and on remote machines, in one window listing them all, with a menu bar item
@@ -22,11 +22,11 @@ _Avoid_: Pane, terminal, process
 
 **Status**:
 Herdr's classification of an Agent, taken verbatim: `idle`, `working`, `blocked`, `done`,
-or `unknown`. HerdPet never derives Status itself.
+or `unknown`. Herdview never derives Status itself.
 _Avoid_: State, waiting, registered
 
 **Transition**:
-An Agent changing from one Status to another as observed by HerdPet. Only transitions
+An Agent changing from one Status to another as observed by Herdview. Only transitions
 into `blocked` and `done` produce a Highlight.
 
 **Highlight**:
@@ -36,5 +36,5 @@ one.
 _Avoid_: Notification, toast
 
 **Since**:
-The moment HerdPet observed an Agent's current Status. Herdr does not report timestamps,
+The moment Herdview observed an Agent's current Status. Herdr does not report timestamps,
 so timers count from observation, not from the real change.

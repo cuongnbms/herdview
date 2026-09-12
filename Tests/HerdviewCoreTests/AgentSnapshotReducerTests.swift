@@ -1,5 +1,5 @@
 import XCTest
-@testable import HerdPetCore
+@testable import HerdviewCore
 
 final class AgentSnapshotReducerTests: XCTestCase {
     private func info(_ pane: String, _ status: AgentStatus, revision: UInt64 = 1, cwd: String? = nil) -> AgentInfo {

@@ -1,5 +1,5 @@
 import XCTest
-@testable import HerdPetCore
+@testable import HerdviewCore
 
 final class ConfigLoaderTests: XCTestCase {
     func testFullSample() throws {
@@ -54,7 +54,7 @@ final class ConfigLoaderTests: XCTestCase {
     }
 
     func testLoadMissingFileThrowsParse() {
-        XCTAssertThrowsError(try ConfigLoader.load(path: "/nonexistent/herdpet.toml")) { error in
+        XCTAssertThrowsError(try ConfigLoader.load(path: "/nonexistent/herdview.toml")) { error in
             guard case ConfigError.parse? = error as? ConfigError else { return XCTFail("expected parse error, got \(error)") }
         }
     }

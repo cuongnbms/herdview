@@ -1,5 +1,5 @@
 import AppKit
-import HerdPetCore
+import HerdviewCore
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -14,7 +14,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        var config = HerdPetConfig(hosts: [])
+        var config = HerdviewConfig(hosts: [])
         do {
             config = try ConfigLoader.load()
         } catch {

@@ -1,5 +1,5 @@
 import SwiftUI
-import HerdPetCore
+import HerdviewCore
 
 extension AgentStatus {
     /// The one colour that carries this status everywhere it shows up: the

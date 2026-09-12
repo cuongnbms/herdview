@@ -1,6 +1,6 @@
-# HerdPet — macOS 13+, SwiftPM
+# Herdview — macOS 13+, SwiftPM
 CONFIG ?= release
-APP    := build/HerdPet.app
+APP    := build/Herdview.app
 
 .PHONY: all build app run test icon clean
 

@@ -1,9 +1,9 @@
 import XCTest
-@testable import HerdPetCore
+@testable import HerdviewCore
 
 final class SSHForwardSpecTests: XCTestCase {
     func testArguments() {
-        let spec = SSHForwardSpec(sshTarget: "devtuf", localSocketPath: "/Users/me/.herdpet/sock/devtuf-blue.sock",
+        let spec = SSHForwardSpec(sshTarget: "devtuf", localSocketPath: "/Users/me/.herdview/sock/devtuf-blue.sock",
                                   remoteSocketPath: "/home/cuongnb/.config/herdr/sessions/blue/herdr.sock")
         XCTAssertEqual(SSHForwardSpec.executable, "/usr/bin/ssh")
         XCTAssertEqual(spec.arguments, [
@@ -12,7 +12,7 @@ final class SSHForwardSpecTests: XCTestCase {
             "-o", "ServerAliveInterval=15",
             "-o", "ServerAliveCountMax=3",
             "-o", "BatchMode=yes",
-            "-L", "/Users/me/.herdpet/sock/devtuf-blue.sock:/home/cuongnb/.config/herdr/sessions/blue/herdr.sock",
+            "-L", "/Users/me/.herdview/sock/devtuf-blue.sock:/home/cuongnb/.config/herdr/sessions/blue/herdr.sock",
             "devtuf",
         ])
     }

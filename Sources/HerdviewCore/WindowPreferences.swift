@@ -5,7 +5,7 @@ import Foundation
 /// own autosave; this covers what AppKit does not, starting with whether the
 /// window floats above other apps.
 public struct WindowPreferences {
-    private static let alwaysOnTopKey = "herdpet.alwaysOnTop"
+    private static let alwaysOnTopKey = "herdview.alwaysOnTop"
 
     private let defaults: UserDefaults
 

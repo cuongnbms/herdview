@@ -1,6 +1,6 @@
 import Foundation
 
-/// One agent as Herdr's `agent.list` reports it. Only the fields HerdPet uses
+/// One agent as Herdr's `agent.list` reports it. Only the fields Herdview uses
 /// are decoded; everything else in the record is ignored.
 public struct AgentInfo: Codable, Equatable, Sendable {
     public var paneId: String

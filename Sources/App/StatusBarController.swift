@@ -1,6 +1,6 @@
 import AppKit
 import Combine
-import HerdPetCore
+import HerdviewCore
 
 /// Menu bar item: a paw, plus an orange count while any agent is blocked.
 /// Clicking toggles the window; the popover it used to show is gone, since the
@@ -20,7 +20,7 @@ final class StatusBarController: NSObject {
 
     func start() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.image = NSImage(systemSymbolName: "pawprint.fill", accessibilityDescription: "HerdPet")
+        item.button?.image = NSImage(systemSymbolName: "pawprint.fill", accessibilityDescription: "Herdview")
         item.button?.imagePosition = .imageLeading
         item.button?.target = self
         item.button?.action = #selector(toggle)

@@ -1,5 +1,5 @@
 import XCTest
-@testable import HerdPetCore
+@testable import HerdviewCore
 
 final class AgentTitlesTests: XCTestCase {
     private func info(paneId: String = "w2:p1", name: String? = nil,

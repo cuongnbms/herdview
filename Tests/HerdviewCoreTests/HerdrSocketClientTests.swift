@@ -1,6 +1,6 @@
 import XCTest
 import Darwin
-@testable import HerdPetCore
+@testable import HerdviewCore
 
 /// Accepts exactly one connection, reads one line, replies with `response` + "\n".
 final class FakeSocketServer {

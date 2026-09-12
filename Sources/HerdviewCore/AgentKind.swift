@@ -1,6 +1,6 @@
 import Foundation
 
-/// Agent families HerdPet has an icon for. Case names match AgentPet's so the
+/// Agent families Herdview has an icon for. Case names match AgentPet's so the
 /// copied `AgentIcons.swift` compiles unchanged.
 public enum AgentKind: String, Sendable, CaseIterable, Equatable {
     case claude

@@ -1,5 +1,5 @@
 import XCTest
-@testable import HerdPetCore
+@testable import HerdviewCore
 
 final class WindowPreferencesTests: XCTestCase {
     private var defaults: UserDefaults!
@@ -7,7 +7,7 @@ final class WindowPreferencesTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        suiteName = "herdpet.tests.\(UUID().uuidString)"
+        suiteName = "herdview.tests.\(UUID().uuidString)"
         defaults = UserDefaults(suiteName: suiteName)
     }
 

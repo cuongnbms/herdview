@@ -1,4 +1,4 @@
-# HerdPet
+# Herdview
 
 A macOS app that shows every coding agent running inside
 [Herdr](https://herdr.dev), locally and on remote machines over SSH, in one
@@ -16,7 +16,7 @@ never from agent hooks. See `docs/adr/` for why.
 
 ## Configure
 
-`~/.config/herdpet/config.toml`:
+`~/.config/herdview/config.toml`:
 
 ```toml
 [[hosts]]
@@ -30,9 +30,13 @@ herdr_path = "/home/cuongnb/.local/bin/herdr"
 poll_seconds = 2            # optional, default 2
 ```
 
-A config from an older version may still carry `pet`, `[clips]` or `[messages]`.
-Those keys are ignored — HerdPet has no pet to configure any more — and the file
-loads as it always did.
+The app was called HerdPet and read `~/.config/herdpet/config.toml`. Nothing
+migrates that file for you: move it yourself with
+`mv ~/.config/herdpet ~/.config/herdview`. A config from back then may still
+carry `pet`, `[clips]` or `[messages]`; those keys are ignored — there has been
+no pet since `docs/adr/0003` — and the file loads as it always did. The window
+position and `Keep on Top` do not survive the rename either, since they were
+stored under the old bundle id.
 
 A bar across the top counts the herd: how many agents are blocked, and quietly
 how many are working or done. Below it the window lists every agent, one section
@@ -56,17 +60,17 @@ back.
 
 Every 30 seconds each host is asked `herdr session list --json`; every running
 session is polled every `poll_seconds` with `agent.list`. Remote sessions are
-reached through `ssh -N -L ~/.herdpet/sock/<host>-<session>.sock:<remote socket> <host>`.
+reached through `ssh -N -L ~/.herdview/sock/<host>-<session>.sock:<remote socket> <host>`.
 
 ## Build and run
 
 ```bash
-make          # release .app → build/HerdPet.app
+make          # release .app → build/Herdview.app
 make run      # build and open
 make test     # swift test
 make clean
 ```
 
-Or without Make: `swift test && ./scripts/build-app.sh && open build/HerdPet.app`.
+Or without Make: `swift test && ./scripts/build-app.sh && open build/Herdview.app`.
 
-Logs go to the unified log: `log stream --predicate 'process == "herdpet"'`.
+Logs go to the unified log: `log stream --predicate 'process == "herdview"'`.

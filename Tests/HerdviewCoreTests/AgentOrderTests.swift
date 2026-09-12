@@ -1,5 +1,5 @@
 import XCTest
-@testable import HerdPetCore
+@testable import HerdviewCore
 
 final class AgentOrderTests: XCTestCase {
     private let t0 = Date(timeIntervalSince1970: 1_000)

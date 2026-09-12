@@ -1,8 +1,8 @@
 import XCTest
-@testable import HerdPetCore
+@testable import HerdviewCore
 
 final class VersionTests: XCTestCase {
     func testVersionIsSet() {
-        XCTAssertEqual(HerdPet.version, "0.1.0")
+        XCTAssertEqual(Herdview.version, "0.1.0")
     }
 }

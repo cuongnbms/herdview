@@ -17,7 +17,7 @@ public struct HostConfig: Equatable, Sendable {
     public var isLocal: Bool { ssh == nil }
 }
 
-public struct HerdPetConfig: Equatable, Sendable {
+public struct HerdviewConfig: Equatable, Sendable {
     public var hosts: [HostConfig]
 
     public init(hosts: [HostConfig]) {
@@ -32,10 +32,10 @@ public enum ConfigError: Error, Equatable {
 }
 
 public enum ConfigLoader {
-    public static let defaultPath = NSHomeDirectory() + "/.config/herdpet/config.toml"
+    public static let defaultPath = NSHomeDirectory() + "/.config/herdview/config.toml"
     public static let defaultPollSeconds = 2
 
-    public static func load(path: String = defaultPath) throws -> HerdPetConfig {
+    public static func load(path: String = defaultPath) throws -> HerdviewConfig {
         guard let data = FileManager.default.contents(atPath: path),
               let text = String(data: data, encoding: .utf8) else {
             throw ConfigError.parse("cannot read \(path)")
@@ -43,7 +43,7 @@ public enum ConfigLoader {
         return try parse(text)
     }
 
-    public static func parse(_ text: String) throws -> HerdPetConfig {
+    public static func parse(_ text: String) throws -> HerdviewConfig {
         let doc: TOMLDocument
         do {
             doc = try TOMLSubset.parse(text)
@@ -67,6 +67,6 @@ public enum ConfigLoader {
             hosts.append(HostConfig(name: name, ssh: ssh, herdrPath: herdrPath, pollSeconds: poll))
         }
 
-        return HerdPetConfig(hosts: hosts)
+        return HerdviewConfig(hosts: hosts)
     }
 }
