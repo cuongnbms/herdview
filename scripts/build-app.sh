@@ -17,6 +17,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BINDIR/herdpet" "$APP/Contents/MacOS/herdpet"
 cp "$ROOT/scripts/AppInfo.plist" "$APP/Contents/Info.plist"
+cp "$ROOT/scripts/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 
 codesign --force --sign - "$APP" >/dev/null
 echo "Done: $APP"

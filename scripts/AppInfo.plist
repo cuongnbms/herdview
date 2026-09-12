@@ -8,6 +8,8 @@
 	<string>HerdPet</string>
 	<key>CFBundleExecutable</key>
 	<string>herdpet</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.herdpet.app</string>
 	<key>CFBundleName</key>
