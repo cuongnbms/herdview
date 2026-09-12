@@ -71,11 +71,6 @@ final class AgentStore: ObservableObject {
     }
 
     private func rebuild() {
-        agents = bySession.values.flatMap { $0 }.sorted(by: Self.ordered)
-    }
-
-    private static func ordered(_ a: TrackedAgent, _ b: TrackedAgent) -> Bool {
-        let ra = a.status.attentionRank, rb = b.status.attentionRank
-        return ra != rb ? ra < rb : a.key < b.key
+        agents = bySession.values.flatMap { $0 }.sorted(by: AgentOrder.before)
     }
 }
