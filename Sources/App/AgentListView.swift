@@ -2,11 +2,22 @@ import AppKit
 import SwiftUI
 import HerdviewCore
 
-/// What every host is running: a summary of the whole herd, then one section
-/// per host, most attention-worthy agent first. This is the window's whole
-/// content. The tick lives here, and moves the elapsed times only: it runs at
-/// half a second so a row never shows a stale second. The blink is not on this
-/// clock at all — it is handed to Core Animation once and runs on its own.
+/// What every host is running: one card per host, most attention-worthy agent
+/// first. This is the window's whole content, and it is drawn on the window's
+/// own glass — nothing here paints a background of its own.
+///
+/// There is no summary of the herd. The menu bar item already carries the
+/// blocked count, every card carries its host's, and what an agent is doing is
+/// on its own row; a bar restating all three only cost the window its top inch.
+///
+/// Nothing here reserves room for the title bar either. The window hands the
+/// list a safe area that already excludes it, and the window buttons sit inside
+/// that area — so a spacer of the title bar's height on top of it counts the
+/// same strip twice and pushes the first host most of an inch down the window.
+///
+/// The tick lives here, and moves the elapsed times only: it runs at half a
+/// second so a row never shows a stale second. The blink is not on this clock
+/// at all — it is handed to Core Animation once and runs on its own.
 struct AgentListView: View {
     /// Half a second, so the displayed second is never more than half a second
     /// behind the real one.
@@ -16,35 +27,40 @@ struct AgentListView: View {
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: Self.tick)) { context in
-            VStack(spacing: 0) {
-                SummaryBar(agents: store.agents)
-                    .background(Color(nsColor: .windowBackgroundColor))
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0, pinnedViews: .sectionHeaders) {
-                        if let error = store.configError {
-                            Notice(symbol: "exclamationmark.triangle.fill", text: error, tint: .red)
-                                .padding(.horizontal, Metrics.gutter)
-                                .padding(.top, 12)
-                        }
-                        if store.hostOrder.isEmpty {
-                            Notice(symbol: "server.rack",
-                                   text: "No hosts yet. Add one in \(ConfigLoader.defaultPath)")
-                                .padding(.horizontal, Metrics.gutter)
-                                .padding(.top, 12)
-                        }
-                        ForEach(store.hostOrder, id: \.self) { host in
-                            HostSection(host: host, store: store, now: context.date)
-                        }
+            ScrollView {
+                // Host groups are separated by air rather than by a rule:
+                // the card edge already says where one host ends.
+                LazyVStack(alignment: .leading, spacing: Metrics.groupGap) {
+                    if let error = store.configError {
+                        Notice(symbol: "exclamationmark.triangle.fill", text: error, tint: .red)
+                            .padding(.horizontal, Metrics.textInset)
+                            .cardSurface()
                     }
-                    .padding(.bottom, 10)
+                    if store.hostOrder.isEmpty {
+                        Notice(symbol: "server.rack",
+                               text: "No hosts yet. Add one in \(ConfigLoader.defaultPath)")
+                            .padding(.horizontal, Metrics.textInset)
+                            .cardSurface()
+                    }
+                    ForEach(store.hostOrder, id: \.self) { host in
+                        HostGroup(host: host, store: store, now: context.date)
+                    }
                 }
+                .padding(.horizontal, Metrics.gutter)
+                // Asymmetric on purpose. The window already holds the list clear
+                // of the title bar through the safe area, and the window buttons
+                // live inside that; anything more on top is a gap this window
+                // cannot afford. The bottom has nothing above it and keeps the
+                // whole margin.
+                .padding(.top, 2)
+                .padding(.bottom, Metrics.gutter)
             }
-            // The list gets the lighter content surface and the summary bar
-            // keeps the window's own grey, the way Finder and Mail separate a
-            // toolbar from what it is describing. Both are stated outright: a
-            // hosting view inherits no background, so leaving either implicit
-            // puts white text on a white sheet in dark mode.
-            .background(Color(nsColor: .textBackgroundColor))
+            // No background here on purpose. The window's own backdrop is an
+            // `NSVisualEffectView` blurring whatever is behind the window, and
+            // painting a colour over it would be painting the blur out again.
+            // That view, not this one, is what keeps light text off a light
+            // sheet in dark mode.
+            //
             // The popover was a fixed 360 wide; a window is whatever the user
             // drags it to, so the list fills the width and the rows spread.
             .frame(minWidth: 360, maxWidth: .infinity, alignment: .topLeading)
@@ -53,83 +69,73 @@ struct AgentListView: View {
 }
 
 private enum Metrics {
-    /// Page margin. Rows carry their own inset on top of this, so a row's
-    /// title lines up a fixed distance in from the host name above it.
-    static let gutter: CGFloat = 12
+    /// Page margin, outside the cards.
+    static let gutter: CGFloat = 14
+    /// Air between one host's card and the next host's label.
+    static let groupGap: CGFloat = 18
+    /// A card's own corner, and the padding that keeps its content off its
+    /// edge. `cardRadius - cardInset` is the row wash's radius, so the wash
+    /// sits concentric inside the card instead of fighting its corner.
+    static let cardRadius: CGFloat = 12
+    static let cardInset: CGFloat = 4
+    static let washRadius: CGFloat = cardRadius - cardInset
+    /// A row's own padding, inside the card's.
     static let rowInset: CGFloat = 8
+    /// Where text sits in from a card's outer edge. Everything that has to
+    /// line up with the column of agent names uses it — the host's label above
+    /// the card, and the notice that stands in for the rows when a host has
+    /// none — so the window has one text margin rather than three.
+    static let textInset: CGFloat = cardInset + rowInset
     /// How far the blinking wash is held off the top and bottom of its row, so
     /// that two blinking neighbours stay two rows instead of merging into one
     /// block. Half the gap each, so the gap between them is twice this.
     static let washInset: CGFloat = 1.5
 }
 
-// MARK: - Summary
+// MARK: - Card surface
 
-/// The herd at a glance. Blocked is the only count that gets a filled chip:
-/// a done agent is also waiting on you, but only a blocked one is waiting
-/// before it can carry on. Everything else is stated quietly, and when the
-/// herd is healthy this bar is meant to look uneventful.
-private struct SummaryBar: View {
-    let agents: [TrackedAgent]
-
-    var body: some View {
-        let blocked = agents.filter { $0.status == .blocked }.count
-        HStack(spacing: 10) {
-            if blocked > 0 {
-                Chip(count: blocked, label: "blocked", status: .blocked, filled: true)
-            } else if agents.isEmpty {
-                Text("Nothing running")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-            } else {
-                Text("Nothing blocked")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 8)
-            ForEach(Self.quietOrder, id: \.self) { status in
-                let count = agents.filter { $0.status == status }.count
-                if count > 0 {
-                    Chip(count: count, label: status.rawValue, status: status, filled: false)
-                }
-            }
-        }
-        .padding(.horizontal, Metrics.gutter)
-        .padding(.vertical, 9)
+/// The one elevated surface in the window. Everything the list has to say —
+/// a host's agents, an empty host, a broken config — is said on one of these,
+/// so there is a single shape to recognise rather than a rule here and a box
+/// there.
+private struct CardSurface: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .padding(.vertical, Metrics.cardInset)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .cardBackground()
     }
-
-    /// Idle and unknown agents are left out on purpose: idle is the absence of
-    /// work, not a kind of work, and a bar that counts everything stops
-    /// answering the only question it is here for.
-    private static let quietOrder: [AgentStatus] = [.working, .done]
 }
 
-private struct Chip: View {
-    let count: Int
-    let label: String
-    let status: AgentStatus
-    let filled: Bool
-
-    var body: some View {
-        HStack(spacing: 5) {
-            Circle()
-                .fill(status.tint)
-                .frame(width: 7, height: 7)
-            Text("\(count) \(label)")
-                .font(.system(size: 12, weight: filled ? .semibold : .regular))
-                .foregroundStyle(filled ? Color.primary : Color.secondary)
+/// The card's own surface, and the one place in the app that asks the system
+/// for glass.
+///
+/// From macOS 26 it is real Liquid Glass, which is what makes a card read as a
+/// pane held above the blurred desktop rather than as a grey box drawn on it.
+/// Below 26 there is no such thing, so the card stays exactly the flat filled
+/// rectangle it has always been — a known surface, not a second design
+/// imitating the first.
+private struct CardBackground: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 26.0, *) {
+            content.glassEffect(.regular, in: .rect(cornerRadius: Metrics.cardRadius))
+        } else {
+            let shape = RoundedRectangle(cornerRadius: Metrics.cardRadius, style: .continuous)
+            content
+                .background(shape.fill(Color(nsColor: .controlBackgroundColor)))
+                .overlay(shape.strokeBorder(Color.primary.opacity(0.08), lineWidth: 1))
         }
-        .padding(.horizontal, filled ? 9 : 0)
-        .padding(.vertical, filled ? 4 : 0)
-        .background(
-            Capsule().fill(status.tint.opacity(filled ? 0.18 : 0))
-        )
     }
+}
+
+private extension View {
+    func cardSurface() -> some View { modifier(CardSurface()) }
+    func cardBackground() -> some View { modifier(CardBackground()) }
 }
 
 // MARK: - Host
 
-private struct HostSection: View {
+private struct HostGroup: View {
     let host: String
     @ObservedObject var store: AgentStore
     let now: Date
@@ -137,72 +143,95 @@ private struct HostSection: View {
     var body: some View {
         let agents = store.agents(forHost: host)
         let unreachable = store.unreachableHosts.contains(host)
-        Section {
-            if agents.isEmpty {
-                Notice(symbol: unreachable ? "antenna.radiowaves.left.and.right.slash" : "moon.zzz",
-                       text: unreachable ? "Can't reach this host" : "No agents here",
-                       tint: unreachable ? Color(nsColor: .systemOrange) : nil)
-                    .padding(.horizontal, Metrics.gutter + Metrics.rowInset)
-                    .padding(.vertical, 6)
+        VStack(alignment: .leading, spacing: 6) {
+            HostLabel(host: host, count: agents.count, unreachable: unreachable)
+            VStack(alignment: .leading, spacing: 0) {
+                if agents.isEmpty {
+                    Notice(symbol: unreachable ? "antenna.radiowaves.left.and.right.slash" : "moon.zzz",
+                           text: unreachable ? "Can't reach this host" : "No agents here",
+                           tint: unreachable ? Color(nsColor: .systemOrange) : nil)
+                        .padding(.horizontal, Metrics.textInset)
+                }
+                ForEach(Array(agents.enumerated()), id: \.element.key) { index, agent in
+                    if index > 0 {
+                        RowSeparator()
+                    }
+                    AgentRow(agent: agent, now: now)
+                        .padding(.horizontal, Metrics.cardInset)
+                }
             }
-            ForEach(agents, id: \.key) { agent in
-                AgentRow(agent: agent, now: now)
-                    .padding(.horizontal, Metrics.gutter)
-            }
-        } header: {
-            HostHeader(host: host, count: agents.count, unreachable: unreachable)
+            .cardSurface()
         }
     }
 }
 
-/// Host names are set off by a hairline that runs to the trailing edge and
-/// carries the agent count at its end — the rule is doing the separating, so
-/// the name itself needs no tracked-out caps to announce it.
-private struct HostHeader: View {
+/// The hairline between two agents in the same card, indented to start where
+/// their names do, so the column of names is what the eye follows down the
+/// card rather than a rule crossing it.
+///
+/// Drawn as a rectangle rather than with `Divider`. A `Divider` inside a
+/// leading-aligned stack takes its intrinsic width, which is nothing, and
+/// disappears; asking for the width outright is the only way it is reliably
+/// there.
+private struct RowSeparator: View {
+    var body: some View {
+        Rectangle()
+            .fill(Color.primary.opacity(0.08))
+            .frame(maxWidth: .infinity)
+            .frame(height: 1)
+            .padding(.leading, Metrics.textInset + AgentRow.textLeading)
+    }
+}
+
+/// The host's name sits above its card in the quiet type, with the agent count
+/// at the far end. The card edge does the separating that a rule used to do,
+/// so the label is left to be nothing but a label.
+private struct HostLabel: View {
     let host: String
     let count: Int
     let unreachable: Bool
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             Text(host)
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.secondary)
             if unreachable {
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(Color(nsColor: .systemOrange))
-                        .frame(width: 6, height: 6)
-                    Text("unreachable")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                }
+                Circle()
+                    .fill(Color(nsColor: .systemOrange))
+                    .frame(width: 6, height: 6)
+                Text("unreachable")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
             }
-            Rectangle()
-                .fill(Color.primary.opacity(0.10))
-                .frame(height: 1)
+            Spacer(minLength: 8)
             Text("\(count)")
                 .font(.system(size: 11).monospacedDigit())
                 .foregroundStyle(.tertiary)
         }
-        .padding(.horizontal, Metrics.gutter + Metrics.rowInset)
-        .padding(.top, 14)
-        .padding(.bottom, 6)
-        .background(Color(nsColor: .textBackgroundColor))
+        .padding(.horizontal, Metrics.textInset)
     }
 }
 
 // MARK: - Agent
 
 private struct AgentRow: View {
+    /// Where a row's text starts, measured from the row's own leading edge.
+    /// The divider between two rows is indented to meet it, so the column of
+    /// names reads as one column.
+    static let textLeading: CGFloat = iconSide + iconGap
+
+    private static let iconSide: CGFloat = 26
+    private static let iconGap: CGFloat = 10
+
     let agent: TrackedAgent
     let now: Date
 
     var body: some View {
         let text = AgentTitles.rowText(for: agent)
-        HStack(spacing: 10) {
+        HStack(spacing: Self.iconGap) {
             icon
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 2) {
                 // The session keeps the quiet type it had when it sat on the
                 // second line: it says which herd the agent belongs to, not
                 // what the agent is, so it rides beside the name rather than
@@ -235,7 +264,7 @@ private struct AgentRow: View {
                 .frame(minWidth: 48, alignment: .trailing)
         }
         .padding(.horizontal, Metrics.rowInset)
-        .padding(.vertical, 7)
+        .padding(.vertical, 8)
         .background(wash)
         .help(tooltip(for: text))
     }
@@ -248,7 +277,9 @@ private struct AgentRow: View {
     ///
     /// The inset is applied out here rather than inside the wash so that the
     /// layer being animated fills its own view exactly, with nothing between
-    /// the two to lay out.
+    /// the two to lay out. Horizontally it is the card's own inset, which puts
+    /// the wash's corner concentric with the card's; vertically it is only
+    /// enough to keep two blinking neighbours apart.
     private var wash: some View {
         BlinkWash(status: agent.status)
             .padding(.vertical, Metrics.washInset)
@@ -256,20 +287,20 @@ private struct AgentRow: View {
 
     @ViewBuilder private var icon: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
                 .fill(Color.primary.opacity(0.06))
             if let image = AgentIcons.image(for: AgentKind.from(label: agent.info.agent)) {
                 Image(nsImage: image)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 15, height: 15)
+                    .frame(width: 16, height: 16)
             } else {
                 Image(systemName: "terminal")
-                    .font(.system(size: 11))
+                    .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             }
         }
-        .frame(width: 24, height: 24)
+        .frame(width: Self.iconSide, height: Self.iconSide)
     }
 
     /// Every line is truncated in the row, so the pointer can ask for the
@@ -310,7 +341,7 @@ private final class WashView: NSView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.cornerRadius = 8
+        layer?.cornerRadius = Metrics.washRadius
         layer?.cornerCurve = .continuous
         layer?.opacity = 0
     }
@@ -388,7 +419,7 @@ private struct StatusPill: View {
             .font(.system(size: 11, weight: status == .blocked ? .semibold : .regular))
             .foregroundStyle(status == .blocked ? Color.primary : Color.secondary)
             .padding(.horizontal, 8)
-            .padding(.vertical, 2.5)
+            .padding(.vertical, 3)
             .background(
                 Capsule().fill(status.tint.opacity(status == .blocked ? 0.24 : 0.14))
             )
@@ -415,5 +446,6 @@ private struct Notice: View {
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
         }
+        .padding(.vertical, 6)
     }
 }
