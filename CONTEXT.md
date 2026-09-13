@@ -27,13 +27,20 @@ _Avoid_: State, waiting, registered
 
 **Transition**:
 An Agent changing from one Status to another as observed by Herdview. Only transitions
-into `blocked` and `done` produce a Highlight.
+into `blocked` and `done` ask for a person, and those are the ones that produce a
+Highlight and a Notification. Where the Agent came from never matters.
 
 **Highlight**:
-The tint an Agent's row carries for three seconds after its Transition into `blocked` or
-`done`. It is the only thing marking a change; the row itself never goes away to announce
-one.
-_Avoid_: Notification, toast
+The wash an Agent's row blinks in for as long as it is `blocked` or `done`. It keeps
+asking until a person comes; the row itself never goes away to announce a change.
+_Avoid_: Flash, pulse
+
+**Notification**:
+The macOS banner Herdview posts on a Transition into `blocked` or `done` — one per Agent,
+replacing that Agent's previous one. It carries the same news as a Highlight to a person
+who is not looking at the window. macOS owns whether it is shown; Herdview has no setting
+for it.
+_Avoid_: Toast, alert, popup
 
 **Since**:
 The moment Herdview observed an Agent's current Status. Herdr does not report timestamps,

@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let store = AgentStore()
     private var monitor: Monitor?
     private var statusBar: StatusBarController?
+    private var notifier: TransitionNotifier?
     private var mainWindow: MainWindowController?
     private var menuItems: MainMenu.Items?
 
@@ -30,6 +31,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         statusBar = bar
         bar.start()
+
+        // Before the monitor starts, so the first poll's transitions have
+        // somewhere to go. The first poll of a session has no previous
+        // snapshot to compare against, so it produces no transitions and no
+        // burst of banners at launch.
+        let notifier = TransitionNotifier(store: store) { [weak self] in
+            self?.mainWindow?.show()
+        }
+        self.notifier = notifier
+        notifier.start()
 
         let monitor = Monitor(config: config, store: store)
         self.monitor = monitor

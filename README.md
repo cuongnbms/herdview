@@ -53,6 +53,14 @@ where you put it and how big you made it. `Keep on Top` in the Window menu
 you work elsewhere; it is off until you ask for it, and remembered between
 launches.
 
+When an agent turns `blocked` or `done`, macOS also posts a notification: the
+same directory, session and title the row shows, and clicking it brings the
+window up. You are asked for permission the first time the app runs. One agent
+only ever holds one notification — going `blocked`, then `done`, replaces it
+rather than leaving a stack behind — and no banner is shown while Herdview is the
+app in front, since the blinking row is already saying it. There is no switch for
+this in the app; the switch is System Settings › Notifications › Herdview.
+
 The menu bar item shows how many agents are `blocked`, in orange, and clicking it
 shows or hides the window. Closing the window does not quit the app: the herd
 keeps being polled, and the menu bar item or the Dock icon brings the window

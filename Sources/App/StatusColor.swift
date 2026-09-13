@@ -26,12 +26,11 @@ extension AgentStatus {
         }
     }
 
-    /// Whether a row in this status blinks. Both statuses here are asking for
-    /// a person — one to unblock the agent, one to collect what it finished —
-    /// and the movement is what you are meant to catch from across the desk.
-    var blinks: Bool {
-        self == .blocked || self == .done
-    }
+    /// Whether a row in this status blinks: exactly when its agent is asking
+    /// for a person, which is also exactly when a notification is posted. The
+    /// movement is what you are meant to catch from across the desk; the
+    /// notification is the same news when you are not at the desk at all.
+    var blinks: Bool { asksForAPerson }
 
     /// The two ends the row's wash breathes between, or nil for a status that
     /// does not blink. The dim end is not zero: a row that vanished into the

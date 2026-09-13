@@ -10,6 +10,13 @@ final class AgentStore: ObservableObject {
     @Published private(set) var unreachableHosts: Set<String> = []
     @Published var configError: String?
 
+    /// Every status change the reducer observed, as it observes it. The list is
+    /// a snapshot of what is true now, which is what the window needs; a
+    /// transition is a thing that happened once, which is what a notification
+    /// needs, and a `@Published` value cannot carry that — a second change
+    /// overwrites the first before anyone reads it.
+    let transitions = PassthroughSubject<[Transition], Never>()
+
     private var bySession: [String: [TrackedAgent]] = [:]
 
     func setHostOrder(_ names: [String]) {
@@ -22,6 +29,9 @@ final class AgentStore: ObservableObject {
                                                  host: host, session: session, now: now)
         bySession[key] = result.agents
         rebuild()
+        if !result.transitions.isEmpty {
+            transitions.send(result.transitions)
+        }
     }
 
     func removeSession(host: String, session: String) {

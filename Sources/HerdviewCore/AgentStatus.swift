@@ -28,3 +28,14 @@ public extension AgentStatus {
         }
     }
 }
+
+public extension AgentStatus {
+    /// Whether an agent in this status is waiting on a human: one to unblock
+    /// it, one to collect what it finished. It is the single rule behind both
+    /// ways Herdview asks for attention — the row that blinks and the
+    /// notification that is posted — so the two can never disagree about which
+    /// agents are asking.
+    var asksForAPerson: Bool {
+        self == .blocked || self == .done
+    }
+}
