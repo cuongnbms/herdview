@@ -2,7 +2,7 @@
 
 A macOS app that mirrors the live state of coding agents running inside Herdr, on the
 local machine and on remote machines, in one window listing them all, with a menu bar item
-carrying the count of the ones that need attention.
+that calls the window up.
 
 ## Language
 

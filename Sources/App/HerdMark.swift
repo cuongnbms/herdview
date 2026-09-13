@@ -127,8 +127,19 @@ enum HerdMark {
                      xRadius: size * 0.225, yRadius: size * 0.225)
     }
 
-    /// The menu bar item's image. A drawing handler rather than a bitmap, so
-    /// the bar redraws it at whatever scale the screen it moved to needs.
+    /// The menu bar item's image, and the only one there is.
+    ///
+    /// It does not change when an agent turns blocked. A status item's template
+    /// image is rendered by the menu bar itself, which is what makes it read on
+    /// a light bar and a dark one without being told which it is on; asking for
+    /// `contentTintColor` on top of that takes the rendering away from the bar
+    /// and puts back the mark in the colours it was drawn in — black, which is
+    /// right for a mask and wrong for a bar. The count that used to sit beside
+    /// it is gone with it; the window and the notification both already say
+    /// which agents are asking.
+    ///
+    /// A drawing handler rather than a bitmap, so the bar redraws it at
+    /// whatever scale the screen it moved to needs.
     static func menuBarImage() -> NSImage {
         let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { rect in
             draw(size: rect.width, style: .template)

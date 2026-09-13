@@ -26,7 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         mainWindow = window
         window.show()
 
-        let bar = StatusBarController(store: store) { [weak self] in
+        let bar = StatusBarController { [weak self] in
             self?.mainWindow?.toggle()
         }
         statusBar = bar

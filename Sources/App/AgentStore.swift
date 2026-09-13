@@ -47,8 +47,6 @@ final class AgentStore: ObservableObject {
         }
     }
 
-    var blockedCount: Int { agents.filter { $0.status == .blocked }.count }
-
     func agents(forHost host: String) -> [TrackedAgent] {
         agents.filter { $0.host == host }
     }

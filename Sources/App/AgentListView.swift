@@ -6,9 +6,10 @@ import HerdviewCore
 /// first. This is the window's whole content, and it is drawn on the window's
 /// own glass — nothing here paints a background of its own.
 ///
-/// There is no summary of the herd. The menu bar item already carries the
-/// blocked count, every card carries its host's, and what an agent is doing is
-/// on its own row; a bar restating all three only cost the window its top inch.
+/// There is no summary of the herd. Every card carries its host's count, what
+/// an agent is doing is on its own row, and a notification reaches whoever is
+/// not looking at either; a bar restating all of it only cost the window its
+/// top inch.
 ///
 /// Nothing here reserves room for the title bar either. The window hands the
 /// list a safe area that already excludes it, and the window buttons sit inside

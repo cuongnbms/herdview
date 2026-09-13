@@ -2,7 +2,7 @@
 
 A macOS app that shows every coding agent running inside
 [Herdr](https://herdr.dev), locally and on remote machines over SSH, in one
-window, with a menu bar item carrying the number that are blocked.
+window, with a menu bar item to call that window up.
 
 State comes from Herdr's own detection (`agent.list` on each session's socket),
 never from agent hooks. See `docs/adr/` for why.
