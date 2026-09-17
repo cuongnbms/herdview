@@ -9,7 +9,7 @@ public enum QuotaFormat {
         "\(Int(value.rounded()))%"
     }
 
-    /// Time left until a Reset: `4d`, `1d5h`, `1h36m`, `5h`, `36m`, `<1m`.
+    /// Time left until a Reset: `4d2h`, `4d`, `1d5h`, `1h36m`, `5h`, `36m`, `<1m`.
     /// A Reset already past reads `reset pending` until the next fetch brings
     /// the new Window; `nil` when the Provider gave no Reset.
     public static func untilReset(_ reset: Date?, now: Date) -> String? {
@@ -19,8 +19,7 @@ public enum QuotaFormat {
         let days = seconds / 86_400
         let hours = (seconds % 86_400) / 3_600
         let minutes = (seconds % 3_600) / 60
-        if days >= 2 { return "\(days)d" }
-        if days == 1 { return hours == 0 ? "1d" : "1d\(hours)h" }
+        if days > 0 { return hours == 0 ? "\(days)d" : "\(days)d\(hours)h" }
         if hours > 0 { return minutes == 0 ? "\(hours)h" : "\(hours)h\(minutes)m" }
         if minutes > 0 { return "\(minutes)m" }
         return "<1m"

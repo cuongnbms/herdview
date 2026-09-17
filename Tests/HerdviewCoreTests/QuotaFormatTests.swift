@@ -15,7 +15,8 @@ final class QuotaFormatTests: XCTestCase {
     }
 
     func testUntilReset() {
-        XCTAssertEqual(until(4 * 86_400 + 7_200), "4d")
+        XCTAssertEqual(until(4 * 86_400 + 7_200), "4d2h")
+        XCTAssertEqual(until(6 * 86_400 + 23 * 3_600 + 59 * 60), "6d23h")
         XCTAssertEqual(until(2 * 86_400), "2d")
         XCTAssertEqual(until(86_400 + 5 * 3_600 + 59), "1d5h")
         XCTAssertEqual(until(86_400), "1d")
