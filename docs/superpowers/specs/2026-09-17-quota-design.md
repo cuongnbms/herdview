@@ -1,7 +1,7 @@
 # Quota for Claude, Codex, OpenCode Go and Grok
 
 Date: 2026-09-17
-Status: approved in conversation, awaiting review of this document
+Status: approved
 
 ## Purpose
 
@@ -175,8 +175,8 @@ Reads the four sources and hands the bytes to `QuotaCredentials`.
   is shown, at most once every 60 s. The window controller tells the monitor when it is
   shown and hidden.
 - A Provider that is `rateLimited` is skipped until its time passes.
-- Logs `herdview: quota <provider>: <outcome>` with the HTTP status. Never a token and
-  never a body.
+- Logs `herdview: quota <provider>: <outcome>`; a failed status shows in the outcome
+  (`failed: HTTP 500`). Never a token and never a body.
 
 ### QuotaStore
 
