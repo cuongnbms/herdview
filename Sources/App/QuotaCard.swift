@@ -44,10 +44,11 @@ private struct QuotaRow: View {
         HStack(alignment: .top, spacing: Self.iconGap) {
             icon
             VStack(alignment: .leading, spacing: 4) {
-                Text(provider.displayName)
-                    .font(.system(size: 13, weight: .medium))
-                    .lineLimit(1)
-                content
+                FlowLayout(spacing: 14, lineSpacing: 4) {
+                    providerName
+                    inlineContent
+                }
+                staleNote
             }
             Spacer(minLength: 0)
         }
@@ -55,29 +56,43 @@ private struct QuotaRow: View {
         .padding(.vertical, 8)
     }
 
-    @ViewBuilder private var content: some View {
+    /// The name is the first item in the same flow as the Windows. This keeps
+    /// the approved icon → Provider → Window composition at normal widths and
+    /// lets only the items that no longer fit move to following lines.
+    private var providerName: some View {
+        Text(provider.displayName)
+            .font(.system(size: 13, weight: .medium))
+            .lineLimit(1)
+            .fixedSize()
+    }
+
+    @ViewBuilder private var inlineContent: some View {
         switch entry {
         case .loading:
             EmptyView()
         case .notSignedIn:
             note("not signed in")
         case .ok(let report):
-            gauges(report.windows)
+            gauges(report.windows, dimmed: false)
         case .problem(let problem, let last):
             if let last {
-                gauges(last.windows).opacity(0.45)
-                note("\(problem.message(for: provider)) · \(QuotaFormat.updatedAgo(last.fetchedAt, now: now))")
+                gauges(last.windows, dimmed: true)
             } else {
                 note(problem.message(for: provider))
             }
         }
     }
 
-    private func gauges(_ windows: [QuotaWindow]) -> some View {
-        FlowLayout(spacing: 14, lineSpacing: 4) {
-            ForEach(Array(windows.enumerated()), id: \.offset) { _, window in
-                WindowGauge(window: window, now: now)
-            }
+    @ViewBuilder private var staleNote: some View {
+        if case .problem(let problem, let last?) = entry {
+            note("\(problem.message(for: provider)) · \(QuotaFormat.updatedAgo(last.fetchedAt, now: now))")
+        }
+    }
+
+    @ViewBuilder private func gauges(_ windows: [QuotaWindow], dimmed: Bool) -> some View {
+        ForEach(Array(windows.enumerated()), id: \.offset) { _, window in
+            WindowGauge(window: window, now: now)
+                .opacity(dimmed ? 0.45 : 1)
         }
     }
 

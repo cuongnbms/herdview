@@ -29,9 +29,12 @@ final class MainWindowController: NSObject {
     private let store: AgentStore
     private let preferences: WindowPreferences
     private let keepOnTopItem: NSMenuItem?
+    private var reportedVisible = false
 
-    /// Called every time the window is shown, so the Quota can refresh.
+    /// Visibility hooks keep Quota work aligned with AppKit, including actions
+    /// that do not go through this controller's `show()` / `hide()` methods.
     var onShow: (() -> Void)?
+    var onHide: (() -> Void)?
 
     init(store: AgentStore,
          quotaStore: QuotaStore,
@@ -70,14 +73,17 @@ final class MainWindowController: NSObject {
 
         super.init()
 
+        window.delegate = self
+
         keepOnTopItem?.target = self
         keepOnTopItem?.action = #selector(toggleAlwaysOnTop)
         applyAlwaysOnTop(preferences.isAlwaysOnTop)
     }
 
-    var isVisible: Bool { window.isVisible }
+    var isVisible: Bool { window.isVisible && !window.isMiniaturized }
 
     func show() {
+        if window.isMiniaturized { window.deminiaturize(nil) }
         window.makeKeyAndOrderFront(nil)
         // `activate(ignoringOtherApps:)` is deprecated from macOS 14, and this
         // package still deploys to 13.
@@ -86,11 +92,26 @@ final class MainWindowController: NSObject {
         } else {
             NSApp.activate(ignoringOtherApps: true)
         }
-        onShow?()
+        reportShown()
     }
 
     func hide() {
+        // Cancel synchronously rather than waiting for AppKit's order-off
+        // notification; the notification remains the safety net for external
+        // order-out and close paths.
+        reportHidden()
         window.orderOut(nil)
+    }
+
+    private func reportShown() {
+        reportedVisible = true
+        onShow?()
+    }
+
+    private func reportHidden() {
+        guard reportedVisible else { return }
+        reportedVisible = false
+        onHide?()
     }
 
     /// The Window menu's `Keep on Top`: float above other apps, or stop.
@@ -153,5 +174,30 @@ final class MainWindowController: NSObject {
         let controller = NSViewController()
         controller.view = effect
         return controller
+    }
+}
+
+extension MainWindowController: NSWindowDelegate {
+    /// AppKit sends this for ordering paths outside `hide()`, including an
+    /// external `orderOut`. A merely covered window stays active; becoming
+    /// uncovered is not a new show and must not bypass the refresh schedule.
+    func windowDidChangeOcclusionState(_ notification: Notification) {
+        if isVisible {
+            if !reportedVisible { reportShown() }
+        } else {
+            reportHidden()
+        }
+    }
+
+    func windowDidMiniaturize(_ notification: Notification) {
+        reportHidden()
+    }
+
+    func windowDidDeminiaturize(_ notification: Notification) {
+        reportShown()
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        reportHidden()
     }
 }

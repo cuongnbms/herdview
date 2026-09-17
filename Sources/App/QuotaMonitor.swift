@@ -17,9 +17,11 @@ final class QuotaMonitor {
     /// interval, so a fetch is at most this late.
     private static let tickNanos: UInt64 = 30 * 1_000_000_000
 
+    typealias RequestLoader = (URLRequest) async throws -> (Data, URLResponse)
+
     private let store: QuotaStore
     private let isWindowVisible: () -> Bool
-    private let session: URLSession
+    private let loadRequest: RequestLoader
     /// Non-nil exactly while the monitor is running. It is the single source of
     /// truth for `start()`/`stop()`, so a second `start()` cannot spawn a loop
     /// that `stop()` has no handle to cancel.
@@ -42,7 +44,18 @@ final class QuotaMonitor {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
         configuration.httpCookieStorage = nil
-        session = URLSession(configuration: configuration)
+        let session = URLSession(configuration: configuration)
+        loadRequest = { request in try await session.data(for: request) }
+    }
+
+    /// A deterministic transport seam for lifecycle coverage. Production uses
+    /// the ephemeral session above; tests can hold a request across a hide
+    /// without touching a Provider or the network.
+    init(store: QuotaStore, isWindowVisible: @escaping () -> Bool,
+         loadRequest: @escaping RequestLoader) {
+        self.store = store
+        self.isWindowVisible = isWindowVisible
+        self.loadRequest = loadRequest
     }
 
     /// Idempotent: while a loop is running this does nothing, so no call can
@@ -64,10 +77,22 @@ final class QuotaMonitor {
 
     /// Cancels the tick loop and every fetch it started. Cancellation is
     /// checked before any log or store write, so nothing that was in flight
-    /// can surface after the window is gone.
+    /// can surface after shutdown.
     func stop() {
         loop?.cancel()
         loop = nil
+        cancelFetches()
+    }
+
+    /// Hiding cancels Provider work but deliberately leaves the tick loop
+    /// running. A later show can therefore resume on the same idempotent
+    /// lifecycle, while fetch IDs still protect replacement tasks from a late
+    /// cleanup by cancelled work.
+    func windowHidden() {
+        cancelFetches()
+    }
+
+    private func cancelFetches() {
         for fetch in fetches.values { fetch.cancel() }
         fetches.removeAll()
         fetchIDs.removeAll()
@@ -107,40 +132,54 @@ final class QuotaMonitor {
 
     private func fetch(_ provider: QuotaProvider) async {
         let lookup = await CredentialReader.read(provider)
-        // A cancelled fetch leaves no trace: `stop()` means the window is gone,
-        // so a read that lands late must not log, back off or write. Nothing
-        // suspends between here and the store write, so `stop()` cannot land
-        // between them.
-        guard !Task.isCancelled else { return }
+        guard canContinueFetch else { return }
 
         let outcome: QuotaOutcome
         switch lookup {
         case .notSignedIn:
+            // Visibility can change without cancellation (for example an AppKit
+            // order-out notification arriving after the window flag changed).
+            guard canContinueFetch else { return }
             store.set(.notSignedIn, for: provider)
             return
         case .failed(let reason):
             outcome = .failed(reason)
         case .found(let credential):
-            // `nil` means the request was cancelled, not that it failed.
+            // Recheck immediately before the network boundary. A credential
+            // read that started while visible may finish after an order-out.
+            guard canContinueFetch else { return }
+            // `nil` means hidden/stopped/cancelled, not a Provider failure.
             guard let result = await request(provider, credential) else { return }
             outcome = result
         }
 
-        guard !Task.isCancelled else { return }
+        // Keep each externally visible side effect independently gated. There
+        // is no suspension between these checks on the main actor, and the
+        // visibility closure also catches order-out before its callback runs.
         if case .rateLimited(let until) = outcome {
+            guard canContinueFetch else { return }
             rateLimitedUntil[provider] = until
         }
+        guard canContinueFetch else { return }
         NSLog("herdview: quota %@: %@", provider.rawValue, outcome.logDescription)
-        store.set(store.entry(for: provider).applying(outcome, provider: provider, now: Date()), for: provider)
+        guard canContinueFetch else { return }
+        let entry = store.entry(for: provider).applying(outcome, provider: provider, now: Date())
+        guard canContinueFetch else { return }
+        store.set(entry, for: provider)
     }
 
-    /// `nil` when the request was cancelled. Cancellation is the lifecycle, not
-    /// a Provider failure, so it must not become a `"network error"` outcome.
+    private var canContinueFetch: Bool {
+        loop != nil && isWindowVisible() && !Task.isCancelled
+    }
+
+    /// `nil` when the request was cancelled or the window became hidden.
+    /// Lifecycle cancellation must not become a `"network error"` outcome.
     private func request(_ provider: QuotaProvider, _ credential: QuotaCredential) async -> QuotaOutcome? {
         let request = QuotaRequests.request(for: provider, credential: credential)
+        guard canContinueFetch else { return nil }
         do {
-            let (data, response) = try await session.data(for: request)
-            guard !Task.isCancelled else { return nil }
+            let (data, response) = try await loadRequest(request)
+            guard canContinueFetch else { return nil }
             guard let http = response as? HTTPURLResponse else { return .failed("no HTTP response") }
             return QuotaOutcome.classify(provider: provider, status: http.statusCode, body: data,
                                          retryAfter: http.value(forHTTPHeaderField: "Retry-After"), now: Date())

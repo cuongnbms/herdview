@@ -54,12 +54,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         self.quotaMonitor = quotaMonitor
         window.onShow = { [weak quotaMonitor] in quotaMonitor?.windowShown() }
+        window.onHide = { [weak quotaMonitor] in quotaMonitor?.windowHidden() }
         quotaMonitor.start()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         monitor?.stop()
         quotaMonitor?.stop()
+    }
+
+    /// Command-H hides the application rather than calling the window
+    /// controller's `hide()`, so mirror that AppKit lifecycle explicitly.
+    func applicationWillHide(_ notification: Notification) {
+        quotaMonitor?.windowHidden()
+    }
+
+    func applicationDidUnhide(_ notification: Notification) {
+        if mainWindow?.isVisible == true { quotaMonitor?.windowShown() }
     }
 
     /// Closing the window hides it. The herd keeps being polled and the menu bar

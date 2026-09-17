@@ -76,7 +76,8 @@ same accounts:
 | Grok | `~/.grok/auth.json` |
 
 They are only read. Herdview never refreshes a token and never runs a CLI (see
-`docs/adr/0005`), so a CLI you have not used for a few hours may show
+[ADR 0005](docs/adr/0005-quota-from-provider-apis-without-refresh.md)), so a
+CLI you have not used for a few hours may show
 "sign-in expired — run grok" with its last numbers dimmed; running that CLI
 once brings it back. A CLI that is not signed in shows "not signed in". Quota
 is fetched every 5 minutes, and when the window is shown, but only while the
