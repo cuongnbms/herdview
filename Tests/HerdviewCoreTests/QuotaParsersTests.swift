@@ -130,6 +130,18 @@ final class QuotaParsersTests: XCTestCase {
         ])
     }
 
+    /// A present-but-malformed percent is not an omitted proto3 zero: reading
+    /// it as 0% would report availability the response does not support.
+    func testGrokWithAPeriodButAMalformedPercentHasNoWindow() {
+        for malformed in ["true", "null", "\"100\""] {
+            let json = #"""
+            {"config":{"currentPeriod":{"type":"USAGE_PERIOD_TYPE_WEEKLY","end":"2026-09-20T01:30:30+00:00"},
+              "creditUsagePercent":\#(malformed)}}
+            """#
+            XCTAssertEqual(windows(.grok, json), [], malformed)
+        }
+    }
+
     func testGrokFallsBackToTheBillingPeriodEnd() {
         let json = #"{"creditUsagePercent":3,"billingPeriodEnd":"2026-09-20T01:30:30Z"}"#
         XCTAssertEqual(windows(.grok, json), [

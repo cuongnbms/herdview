@@ -98,12 +98,22 @@ public enum QuotaParsers {
     // MARK: Grok
 
     /// One Window for the current billing period. proto3 JSON leaves out a
-    /// field whose value is zero, so a period with no `creditUsagePercent` is a
-    /// period with nothing used yet.
+    /// field whose value is zero, so an *absent* `creditUsagePercent` with a
+    /// period is a period with nothing used yet. A present but non-numeric
+    /// value is malformed rather than zero: reading it as 0% would claim credit
+    /// the response does not support, so no Window is produced.
     private static func grok(_ json: [String: Any]) -> [QuotaWindow] {
         let config = json["config"] as? [String: Any] ?? json
         let period = config["currentPeriod"] as? [String: Any]
-        guard let percent = number(config["creditUsagePercent"]) ?? (period == nil ? nil : 0) else { return [] }
+        let percent: Double
+        if let raw = config["creditUsagePercent"] {
+            guard let parsed = number(raw) else { return [] }
+            percent = parsed
+        } else if period != nil {
+            percent = 0
+        } else {
+            return []
+        }
         let label: String
         switch period?["type"] as? String {
         case "USAGE_PERIOD_TYPE_WEEKLY": label = "week"
