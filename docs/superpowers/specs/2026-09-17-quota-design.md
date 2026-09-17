@@ -81,7 +81,7 @@ converts to remaining.
   `rate_limit.secondary_window`, either may be `null`. Each has `used_percent`,
   `limit_window_seconds` and `reset_at` (epoch seconds). The label comes from the
   duration: 18000 → `5h`, 604800 → `week`, anything else → a compact duration
-  (`3h`, `2d`). `additional_rate_limits` is ignored. A `prolite` plan today returns a
+  (`3h`, `2d`, `90m`), and `limit` when the duration is missing. `additional_rate_limits` is ignored. A `prolite` plan today returns a
   weekly primary window and no secondary.
 
 ### OpenCode Go
@@ -103,8 +103,8 @@ stores, so there is no cookie and no secret-entry flow.
 ### Grok
 
 - **Credential**: `~/.grok/auth.json`, an object keyed by issuer. Prefer the key equal to
-  `https://auth.x.ai` or starting with `https://auth.x.ai::`; otherwise take the first
-  entry. Fields `key` (the token) and `user_id` (optional).
+  `https://auth.x.ai` or starting with `https://auth.x.ai::`; otherwise the first other
+  issuer with a key, in sorted order so the choice never depends on dictionary order. Fields `key` (the token) and `user_id` (optional).
 - **Request**: `GET https://cli-chat-proxy.grok.com/v1/billing?format=credits` with
   `Authorization: Bearer <key>`, `X-XAI-Token-Auth: xai-grok-cli`,
   `Accept: application/json`, and `x-userid: <user_id>` when present.
@@ -142,8 +142,15 @@ stores, so there is no cookie and no secret-entry flow.
   | 429 | `rateLimited(until: now + Retry-After)`, default 15 min, capped at 1 h |
   | other status | `failed("HTTP <status>")` |
 
-- `QuotaFormat`: `"19%"`, the time to Reset (`1h36m`, `4d`), `"reset pending"` when the
-  Reset is in the past, `"updated 23m ago"`.
+- JSON numbers are told apart from JSON booleans by CoreFoundation type ID:
+  `JSONSerialization` returns both as `NSNumber`, and a `0` passes `is Bool`, which
+  would drop every 0% Window.
+- `QuotaEntry.applying(outcome)` keeps the last report through sign-in expired, rate
+  limited and failed, and drops it on no subscription, where old numbers would be wrong.
+- `QuotaSchedule.isDue(trigger, lastStarted, rateLimitedUntil, now)` decides when a
+  Provider is fetched (see QuotaMonitor).
+- `QuotaFormat`: `"19%"`, the time to Reset (`4d`, `1d5h`, `1h36m`, `36m`, `<1m`),
+  `"reset pending"` when the Reset is in the past, `"updated 23m ago"`.
 
 ## App
 
@@ -186,8 +193,8 @@ A fetch in flight leaves the entry as it was: no spinner, the last numbers stay.
 
 ### The Quota card
 
-The first card in `AgentListView`, above the Hosts, labelled `QUOTA` like a host label,
-on the same card surface. One row per Provider:
+The first card in `AgentListView`, above the Hosts, labelled `Quota` in the host
+label's type, on the same card surface. One row per Provider:
 
 ```
 QUOTA
@@ -200,12 +207,13 @@ QUOTA
 
 - Icon from `AgentIcons.image(for:)`, then the Provider name, then its Windows, which
   wrap onto further lines as the window narrows.
-- A Window is a label, a thin bar, the percent and the time to Reset. The bar and the
-  percent turn orange at 90% or more, matching the `blocked` colour; below that they
-  use the secondary colour.
+- A Window is a label, a thin bar, the percent and the time to Reset. At 90% or more
+  the bar turns orange, matching the `blocked` colour, and the percent turns primary
+  and semibold. Text never turns orange: as `StatusColor.swift` says, orange text does
+  not reach a readable contrast on a light window at 11pt.
 - `.notSignedIn`: the name, then "not signed in" in secondary text.
 - `.problem` with `last`: the last Windows drawn dimmed, then the message and
-  "updated 23m ago". Messages: "sign-in expired — run `claude`", "no Go subscription",
+  "updated 23m ago". Messages: "sign-in expired — run claude", "no Go subscription",
   "rate limited", "unreadable response", "Keychain access denied", "HTTP 500".
 - `.problem` without `last`: the name and the message only.
 - `.loading`: the name only.
