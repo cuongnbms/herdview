@@ -13,7 +13,7 @@ final class QuotaOutcomeTests: XCTestCase {
     func testA200WithWindowsIsAReport() {
         let body = #"{"usage":{"weekly":{"percent":19,"resetsAt":null}}}"#
         XCTAssertEqual(classify(.opencodeGo, 200, body),
-                       .report([QuotaWindow(label: "week", usedPercent: 19, resetsAt: nil)]))
+                       .report([QuotaWindow(label: "week", usedPercent: 19, resetsAt: nil, duration: 604_800)]))
     }
 
     /// A 200 the parser cannot read means the endpoint changed shape. Saying so

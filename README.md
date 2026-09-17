@@ -64,7 +64,11 @@ this in the app; the switch is System Settings › Notifications › Herdview.
 Above the hosts, a Quota card shows how much of each plan is used: Claude, Codex,
 OpenCode Go and Grok, one row each. Every Window — `5h`, `week`, `month`, or a
 per-model week like `week · Fable` — shows the percent used and how long until it
-resets, and its bar turns orange from 90%. The numbers come from each CLI's own
+resets, and its bar turns orange from 90%. A yellow tick on the bar marks how much
+of the Window's time has passed, so a bar that runs past its tick is being spent
+faster than the clock; a `month`, whose length varies, has no tick. Clicking
+"Quota" folds the card to one line with each Provider's shortest Window, and the
+card stays folded next launch. The numbers come from each CLI's own
 sign-in on this Mac, never from the remote hosts, since every host spends the
 same accounts:
 
@@ -81,7 +85,8 @@ CLI you have not used for a few hours may show
 "sign-in expired — run grok" with its last numbers dimmed; running that CLI
 once brings it back. A CLI that is not signed in shows "not signed in". Quota
 is fetched every 5 minutes, and when the window is shown, but only while the
-window is visible. The first read of Claude's Keychain item may ask for
+window is visible; the ↻ button beside "Quota" fetches it at once, unless a
+Provider is waiting out a rate limit. The first read of Claude's Keychain item may ask for
 permission; choose Always Allow. None of these usage endpoints is documented,
 so a row that says "unreadable response" means a Provider changed its API.
 

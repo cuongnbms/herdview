@@ -3,30 +3,128 @@ import HerdviewCore
 
 /// How much of each Provider's Quota is used, above the Hosts. One row per
 /// Provider, always, so a missing row can never be read as "no limit".
+///
+/// Collapsed, the card keeps every Provider on one line with its shortest
+/// Window only, so it still answers "can I keep going" in a fraction of the
+/// height.
 struct QuotaCard: View {
     @ObservedObject var store: QuotaStore
     let now: Date
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Quota")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, Metrics.textInset)
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(QuotaProvider.allCases.enumerated()), id: \.element) { index, provider in
-                    if index > 0 {
-                        Rectangle()
-                            .fill(Color.primary.opacity(0.08))
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 1)
-                            .padding(.leading, Metrics.textInset + QuotaRow.textLeading)
-                    }
-                    QuotaRow(provider: provider, entry: store.entry(for: provider), now: now)
-                        .padding(.horizontal, Metrics.cardInset)
+            header
+            Group {
+                if store.isCollapsed {
+                    QuotaSummary(store: store, now: now)
+                        .padding(.horizontal, Metrics.textInset)
+                        .padding(.vertical, 6)
+                } else {
+                    rows
                 }
             }
             .cardSurface()
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: 6) {
+            Button {
+                store.isCollapsed.toggle()
+            } label: {
+                HStack(spacing: 4) {
+                    Text("Quota")
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .semibold))
+                        .rotationEffect(.degrees(store.isCollapsed ? 0 : 90))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(store.isCollapsed ? "Show every Window" : "Show only the shortest Window")
+            Spacer(minLength: 8)
+            refreshButton
+        }
+        .font(.system(size: 11, weight: .semibold))
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, Metrics.textInset)
+    }
+
+    /// A spinner stands in for the button while any Provider is being fetched:
+    /// pressing again then would do nothing, and the spinner says so.
+    @ViewBuilder private var refreshButton: some View {
+        if store.fetching.isEmpty {
+            Button {
+                store.refreshNow()
+            } label: {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 11, weight: .semibold))
+                    .frame(width: 14, height: 14)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Refresh Quota now")
+        } else {
+            ProgressView()
+                .controlSize(.mini)
+                .frame(width: 14, height: 14)
+        }
+    }
+
+    private var rows: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(QuotaProvider.allCases.enumerated()), id: \.element) { index, provider in
+                if index > 0 {
+                    Rectangle()
+                        .fill(Color.primary.opacity(0.08))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 1)
+                        .padding(.leading, Metrics.textInset + QuotaRow.textLeading)
+                }
+                QuotaRow(provider: provider, entry: store.entry(for: provider), now: now)
+                    .padding(.horizontal, Metrics.cardInset)
+            }
+        }
+    }
+}
+
+/// The collapsed card: each Provider's icon beside its shortest Window. A
+/// Provider with nothing to show keeps a faded icon, so it is still there to
+/// be missed rather than silently gone.
+private struct QuotaSummary: View {
+    @ObservedObject var store: QuotaStore
+    let now: Date
+
+    var body: some View {
+        FlowLayout(spacing: 16, lineSpacing: 6) {
+            ForEach(QuotaProvider.allCases, id: \.self) { provider in
+                item(provider, store.entry(for: provider))
+            }
+        }
+    }
+
+    private func item(_ provider: QuotaProvider, _ entry: QuotaEntry) -> some View {
+        let window = entry.lastReport.flatMap { QuotaFormat.summaryWindow(of: $0.windows) }
+        let fresh: Bool
+        if case .ok = entry { fresh = true } else { fresh = false }
+        return HStack(spacing: 6) {
+            ProviderIcon(provider: provider, side: 20)
+                .opacity(window == nil ? 0.45 : 1)
+            if let window {
+                WindowGauge(window: window, now: now)
+                    .opacity(fresh ? 1 : 0.45)
+            }
+        }
+        .help(summaryHelp(provider, entry))
+        .fixedSize()
+    }
+
+    private func summaryHelp(_ provider: QuotaProvider, _ entry: QuotaEntry) -> String {
+        switch entry {
+        case .loading: return provider.displayName
+        case .notSignedIn: return "\(provider.displayName): not signed in"
+        case .ok: return provider.displayName
+        case .problem(let problem, _): return "\(provider.displayName): \(problem.message(for: provider))"
         }
     }
 }
@@ -104,21 +202,36 @@ private struct QuotaRow: View {
     }
 
     private var icon: some View {
+        ProviderIcon(provider: provider, side: Self.iconSide)
+    }
+}
+
+/// A Provider's agent icon on its rounded tile, at whatever size the place
+/// using it needs.
+private struct ProviderIcon: View {
+    let provider: QuotaProvider
+    let side: CGFloat
+
+    var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
+            RoundedRectangle(cornerRadius: side * 7 / 26, style: .continuous)
                 .fill(Color.primary.opacity(0.06))
             if let image = AgentIcons.image(for: provider.agentKind) {
                 Image(nsImage: image)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 16, height: 16)
+                    .frame(width: side * 16 / 26, height: side * 16 / 26)
             }
         }
-        .frame(width: Self.iconSide, height: Self.iconSide)
+        .frame(width: side, height: side)
     }
 }
 
 /// One Window: its label, a thin bar, the percent used, and the time to Reset.
+///
+/// A short tick across the bar marks how much of the Window's time has
+/// passed, so a bar that has run past its tick is Quota spent faster than the
+/// clock. Only drawn when the Window's length is known.
 ///
 /// Warning colour goes on the bar only. Text stays on the label colours, as it
 /// does everywhere in this app, because orange text does not reach a readable
@@ -142,6 +255,7 @@ private struct WindowGauge: View {
                     .frame(width: Self.barWidth * window.usedPercent / 100)
             }
             .frame(width: Self.barWidth, height: 4)
+            .overlay(alignment: .leading) { timeMarker }
             Text(QuotaFormat.percent(window.usedPercent))
                 .fontWeight(warning ? .semibold : .regular)
                 .foregroundStyle(warning ? .primary : .secondary)
@@ -154,6 +268,18 @@ private struct WindowGauge: View {
         .lineLimit(1)
         .fixedSize()
     }
+
+    @ViewBuilder private var timeMarker: some View {
+        if let elapsed = QuotaFormat.elapsedFraction(resetsAt: window.resetsAt, duration: window.duration, now: now) {
+            let width = Self.markerWidth
+            Capsule()
+                .fill(Color(nsColor: .systemYellow))
+                .frame(width: width, height: 10)
+                .offset(x: min(Self.barWidth - width, max(0, Self.barWidth * elapsed - width / 2)))
+        }
+    }
+
+    private static let markerWidth: CGFloat = 2
 }
 
 /// Lays its children out left to right and wraps to a new line when the next

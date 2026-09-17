@@ -55,6 +55,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.quotaMonitor = quotaMonitor
         window.onShow = { [weak quotaMonitor] in quotaMonitor?.windowShown() }
         window.onHide = { [weak quotaMonitor] in quotaMonitor?.windowHidden() }
+        quotaStore.refreshAction = { [weak quotaMonitor] in quotaMonitor?.refreshNow() }
         quotaMonitor.start()
     }
 

@@ -34,4 +34,13 @@ final class WindowPreferencesTests: XCTestCase {
         prefs.isAlwaysOnTop = false
         XCTAssertFalse(WindowPreferences(defaults: defaults).isAlwaysOnTop)
     }
+
+    func testQuotaCardIsExpandedUntilTheUserCollapsesIt() {
+        XCTAssertFalse(WindowPreferences(defaults: defaults).isQuotaCollapsed)
+    }
+
+    func testCollapsingTheQuotaCardSurvivesANewPreferencesObject() {
+        WindowPreferences(defaults: defaults).isQuotaCollapsed = true
+        XCTAssertTrue(WindowPreferences(defaults: defaults).isQuotaCollapsed)
+    }
 }

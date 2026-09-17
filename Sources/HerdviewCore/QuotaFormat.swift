@@ -26,6 +26,22 @@ public enum QuotaFormat {
         return "<1m"
     }
 
+    /// How far through its Window `now` is, from 0 at the start to 1 at the
+    /// Reset, for the marker on the bar: a bar ahead of the marker is Quota
+    /// spent faster than time. `nil` without both a Reset and a length.
+    public static func elapsedFraction(resetsAt: Date?, duration: TimeInterval?, now: Date) -> Double? {
+        guard let resetsAt, let duration, duration > 0 else { return nil }
+        let remaining = resetsAt.timeIntervalSince(now)
+        return min(1, max(0, 1 - remaining / duration))
+    }
+
+    /// The one Window a collapsed card shows for a Provider: the shortest, the
+    /// one that runs out and comes back soonest. The first Window when none
+    /// has a length.
+    public static func summaryWindow(of windows: [QuotaWindow]) -> QuotaWindow? {
+        windows.filter { $0.duration != nil }.min { $0.duration! < $1.duration! } ?? windows.first
+    }
+
     /// How old the numbers on a row with a problem are.
     public static func updatedAgo(_ fetchedAt: Date, now: Date) -> String {
         let seconds = max(0, Int(now.timeIntervalSince(fetchedAt)))

@@ -6,6 +6,9 @@ import Foundation
 /// lenient: a Window that cannot be read is skipped rather than failing the
 /// rest. An empty result means nothing could be read at all.
 public enum QuotaParsers {
+    static let fiveHours: TimeInterval = 18_000
+    static let week: TimeInterval = 604_800
+
     public static func windows(for provider: QuotaProvider, from data: Data) -> [QuotaWindow] {
         guard let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return [] }
         switch provider {
@@ -26,29 +29,30 @@ public enum QuotaParsers {
         for limit in json["limits"] as? [[String: Any]] ?? [] {
             guard let percent = number(limit["percent"]) else { continue }
             let label: String
+            let duration: TimeInterval
             switch limit["kind"] as? String {
             case "session":
-                label = "5h"
+                (label, duration) = ("5h", fiveHours)
             case "weekly_all":
-                label = "week"
+                (label, duration) = ("week", week)
             case "weekly_scoped":
                 let scope = limit["scope"] as? [String: Any]
                 let model = scope?["model"] as? [String: Any]
                 guard let name = model?["display_name"] as? String, !name.isEmpty else { continue }
-                label = "week · \(name)"
+                (label, duration) = ("week · \(name)", week)
             default:
                 continue
             }
             windows.append(QuotaWindow(label: label, usedPercent: percent,
-                                       resetsAt: QuotaDates.parse(any: limit["resets_at"])))
+                                       resetsAt: QuotaDates.parse(any: limit["resets_at"]), duration: duration))
         }
         if !windows.isEmpty { return windows }
 
-        for (key, label) in [("five_hour", "5h"), ("seven_day", "week")] {
+        for (key, label, duration) in [("five_hour", "5h", fiveHours), ("seven_day", "week", week)] {
             guard let window = json[key] as? [String: Any],
                   let percent = number(window["utilization"]) ?? number(window["used_percentage"]) else { continue }
             windows.append(QuotaWindow(label: label, usedPercent: percent,
-                                       resetsAt: QuotaDates.parse(any: window["resets_at"])))
+                                       resetsAt: QuotaDates.parse(any: window["resets_at"]), duration: duration))
         }
         return windows
     }
@@ -62,9 +66,11 @@ public enum QuotaParsers {
         return ["primary_window", "secondary_window"].compactMap { key in
             guard let window = limits[key] as? [String: Any],
                   let percent = number(window["used_percent"]) else { return nil }
-            return QuotaWindow(label: durationLabel(seconds: number(window["limit_window_seconds"])),
+            let seconds = number(window["limit_window_seconds"])
+            return QuotaWindow(label: durationLabel(seconds: seconds),
                                usedPercent: percent,
-                               resetsAt: number(window["reset_at"]).map(QuotaDates.parse(epoch:)))
+                               resetsAt: number(window["reset_at"]).map(QuotaDates.parse(epoch:)),
+                               duration: seconds)
         }
     }
 
@@ -87,11 +93,13 @@ public enum QuotaParsers {
 
     private static func opencodeGo(_ json: [String: Any]) -> [QuotaWindow] {
         guard let usage = json["usage"] as? [String: Any] else { return [] }
-        return [("rolling", "5h"), ("weekly", "week"), ("monthly", "month")].compactMap { key, label in
+        let kinds: [(String, String, TimeInterval?)] = [("rolling", "5h", fiveHours), ("weekly", "week", week),
+                                                         ("monthly", "month", nil)]
+        return kinds.compactMap { key, label, duration in
             guard let window = usage[key] as? [String: Any],
                   let percent = number(window["percent"]) else { return nil }
             return QuotaWindow(label: label, usedPercent: percent,
-                               resetsAt: QuotaDates.parse(any: window["resetsAt"]))
+                               resetsAt: QuotaDates.parse(any: window["resetsAt"]), duration: duration)
         }
     }
 
@@ -120,8 +128,15 @@ public enum QuotaParsers {
         case "USAGE_PERIOD_TYPE_MONTHLY": label = "month"
         default: label = "period"
         }
-        let reset = QuotaDates.parse(any: period?["end"]) ?? QuotaDates.parse(any: config["billingPeriodEnd"])
-        return [QuotaWindow(label: label, usedPercent: percent, resetsAt: reset)]
+        // Start and end are taken as a pair, so a length is never measured
+        // from one period's start to another period's end.
+        let bounds = [(period?["start"], period?["end"]), (config["billingPeriodStart"], config["billingPeriodEnd"])]
+        let reset = bounds.lazy.compactMap { QuotaDates.parse(any: $0.1) }.first
+        let duration = bounds.lazy.compactMap { start, end -> TimeInterval? in
+            guard let start = QuotaDates.parse(any: start), let end = QuotaDates.parse(any: end) else { return nil }
+            return end.timeIntervalSince(start)
+        }.first
+        return [QuotaWindow(label: label, usedPercent: percent, resetsAt: reset, duration: duration)]
     }
 
     // MARK: -

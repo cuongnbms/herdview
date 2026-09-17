@@ -10,6 +10,9 @@ final class QuotaParsersTests: XCTestCase {
 
     private func date(_ seconds: Double) -> Date { Date(timeIntervalSince1970: seconds) }
 
+    private let fiveHours: TimeInterval = 18_000
+    private let week: TimeInterval = 604_800
+
     // MARK: Claude
 
     private let claudeResponse = #"""
@@ -26,9 +29,9 @@ final class QuotaParsersTests: XCTestCase {
 
     func testClaudeReadsLimitsIncludingPerModelWeeks() {
         XCTAssertEqual(windows(.claude, claudeResponse), [
-            QuotaWindow(label: "5h", usedPercent: 19, resetsAt: date(1_789_653_600)),
-            QuotaWindow(label: "week", usedPercent: 28, resetsAt: date(1_790_042_400)),
-            QuotaWindow(label: "week · Fable", usedPercent: 10, resetsAt: date(1_790_042_399)),
+            QuotaWindow(label: "5h", usedPercent: 19, resetsAt: date(1_789_653_600), duration: fiveHours),
+            QuotaWindow(label: "week", usedPercent: 28, resetsAt: date(1_790_042_400), duration: week),
+            QuotaWindow(label: "week · Fable", usedPercent: 10, resetsAt: date(1_790_042_399), duration: week),
         ])
     }
 
@@ -40,7 +43,7 @@ final class QuotaParsersTests: XCTestCase {
           {"kind":"weekly_scoped","percent":7,"resets_at":null,"scope":{"model":null}}
         ]}
         """#
-        XCTAssertEqual(windows(.claude, json), [QuotaWindow(label: "5h", usedPercent: 5, resetsAt: nil)])
+        XCTAssertEqual(windows(.claude, json), [QuotaWindow(label: "5h", usedPercent: 5, resetsAt: nil, duration: fiveHours)])
     }
 
     func testClaudeFallsBackToTheOlderShapeWithoutLimits() {
@@ -51,6 +54,7 @@ final class QuotaParsersTests: XCTestCase {
         let result = windows(.claude, json)
         XCTAssertEqual(result.map(\.label), ["5h", "week"])
         XCTAssertEqual(result.map(\.usedPercent), [16, 28])
+        XCTAssertEqual(result.map(\.duration), [fiveHours, week])
         XCTAssertEqual(result[0].resetsAt?.timeIntervalSince1970 ?? 0, 1_789_653_600.996, accuracy: 0.001)
     }
 
@@ -67,7 +71,7 @@ final class QuotaParsersTests: XCTestCase {
 
     func testCodexReadsThePlanWindowAndIgnoresPerModelLimits() {
         XCTAssertEqual(windows(.codex, codexResponse), [
-            QuotaWindow(label: "week", usedPercent: 0, resetsAt: date(1_790_250_529)),
+            QuotaWindow(label: "week", usedPercent: 0, resetsAt: date(1_790_250_529), duration: week),
         ])
     }
 
@@ -78,9 +82,20 @@ final class QuotaParsersTests: XCTestCase {
           "secondary_window":{"used_percent":12,"limit_window_seconds":604800,"reset_at":1790250529}}}
         """#
         XCTAssertEqual(windows(.codex, json), [
-            QuotaWindow(label: "5h", usedPercent: 42.5, resetsAt: date(1_789_665_826)),
-            QuotaWindow(label: "week", usedPercent: 12, resetsAt: date(1_790_250_529)),
+            QuotaWindow(label: "5h", usedPercent: 42.5, resetsAt: date(1_789_665_826), duration: fiveHours),
+            QuotaWindow(label: "week", usedPercent: 12, resetsAt: date(1_790_250_529), duration: week),
         ])
+    }
+
+    /// A window that is neither 5h nor a week keeps its own length, and one
+    /// without a length has none rather than a guess.
+    func testCodexKeepsAnyWindowLength() {
+        let json = #"""
+        {"rate_limit":{
+          "primary_window":{"used_percent":1,"limit_window_seconds":10800,"reset_at":1789665826},
+          "secondary_window":{"used_percent":2,"reset_at":1790250529}}}
+        """#
+        XCTAssertEqual(windows(.codex, json).map(\.duration), [10_800, nil])
     }
 
     func testDurationLabels() {
@@ -101,8 +116,9 @@ final class QuotaParsersTests: XCTestCase {
                   "monthly":{"status":"rate-limited","percent":100,"resetsAt":"2026-10-17T01:46:02.000Z"}}}
         """#
         XCTAssertEqual(windows(.opencodeGo, json), [
-            QuotaWindow(label: "5h", usedPercent: 0, resetsAt: date(1_789_665_826)),
-            QuotaWindow(label: "week", usedPercent: 19, resetsAt: date(1_789_948_800)),
+            QuotaWindow(label: "5h", usedPercent: 0, resetsAt: date(1_789_665_826), duration: fiveHours),
+            QuotaWindow(label: "week", usedPercent: 19, resetsAt: date(1_789_948_800), duration: week),
+            // Months differ in length, so a month has none.
             QuotaWindow(label: "month", usedPercent: 100, resetsAt: date(1_792_201_562)),
         ])
     }
@@ -115,9 +131,12 @@ final class QuotaParsersTests: XCTestCase {
           "creditUsagePercent":100.0,"onDemandCap":{"val":0},"isUnifiedBillingUser":true,
           "billingPeriodStart":"2026-09-13T01:30:30.900554+00:00","billingPeriodEnd":"2026-09-20T01:30:30.900554+00:00"}}
         """#
-        XCTAssertEqual(windows(.grok, json), [
-            QuotaWindow(label: "week", usedPercent: 100, resetsAt: date(1_789_867_830)),
-        ])
+        let result = windows(.grok, json)
+        XCTAssertEqual(result.map(\.label), ["week"])
+        XCTAssertEqual(result.map(\.usedPercent), [100])
+        XCTAssertEqual(result.map(\.resetsAt), [date(1_789_867_830)])
+        // The period's own length, from its start to its end.
+        XCTAssertEqual(result.first?.duration ?? 0, week - 0.900554, accuracy: 0.001)
     }
 
     /// proto3 JSON drops zero values: a period without a percent is 0% used.
@@ -149,6 +168,11 @@ final class QuotaParsersTests: XCTestCase {
         ])
     }
 
+    func testGrokTakesTheBillingPeriodLengthWhenItHasNoCurrentPeriod() {
+        let json = #"{"creditUsagePercent":3,"billingPeriodStart":"2026-09-13T01:30:30Z","billingPeriodEnd":"2026-09-20T01:30:30Z"}"#
+        XCTAssertEqual(windows(.grok, json).map(\.duration), [week])
+    }
+
     func testGrokWithNeitherPercentNorPeriodHasNoWindow() {
         XCTAssertEqual(windows(.grok, #"{"config":{"prepaidBalance":{"val":0}}}"#), [])
     }
@@ -162,8 +186,8 @@ final class QuotaParsersTests: XCTestCase {
                   "monthly":{"percent":true,"resetsAt":null}}}
         """#
         XCTAssertEqual(windows(.opencodeGo, json), [
-            QuotaWindow(label: "5h", usedPercent: 100, resetsAt: nil),
-            QuotaWindow(label: "week", usedPercent: 0, resetsAt: nil),
+            QuotaWindow(label: "5h", usedPercent: 100, resetsAt: nil, duration: fiveHours),
+            QuotaWindow(label: "week", usedPercent: 0, resetsAt: nil, duration: week),
         ])
     }
 

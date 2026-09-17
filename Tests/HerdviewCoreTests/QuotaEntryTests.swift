@@ -66,4 +66,14 @@ final class QuotaEntryTests: XCTestCase {
         XCTAssertFalse(QuotaSchedule.isDue(.shown, lastStarted: nil, rateLimitedUntil: until, now: now))
         XCTAssertTrue(QuotaSchedule.isDue(.shown, lastStarted: nil, rateLimitedUntil: now, now: now))
     }
+
+    func testRefreshingByHandIsDueAtOnce() {
+        XCTAssertTrue(QuotaSchedule.isDue(.manual, lastStarted: now, rateLimitedUntil: nil, now: now))
+    }
+
+    /// Asking again while rate limited would only push the limit further out.
+    func testRefreshingByHandStillWaitsOutARateLimit() {
+        XCTAssertFalse(QuotaSchedule.isDue(.manual, lastStarted: nil,
+                                           rateLimitedUntil: now.addingTimeInterval(1), now: now))
+    }
 }

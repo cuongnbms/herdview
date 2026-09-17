@@ -40,4 +40,49 @@ final class QuotaFormatTests: XCTestCase {
         XCTAssertEqual(QuotaFormat.updatedAgo(now.addingTimeInterval(-3 * 3_600), now: now), "updated 3h ago")
         XCTAssertEqual(QuotaFormat.updatedAgo(now.addingTimeInterval(-2 * 86_400), now: now), "updated 2d ago")
     }
+
+    // MARK: Elapsed time
+
+    private func elapsed(resetIn seconds: TimeInterval?, duration: TimeInterval?) -> Double? {
+        QuotaFormat.elapsedFraction(resetsAt: seconds.map { now.addingTimeInterval($0) },
+                                    duration: duration, now: now)
+    }
+
+    func testElapsedFractionIsHowFarThroughTheWindowNowIs() {
+        XCTAssertEqual(elapsed(resetIn: 3_600, duration: 18_000) ?? -1, 0.8, accuracy: 0.0001)
+        XCTAssertEqual(elapsed(resetIn: 18_000, duration: 18_000) ?? -1, 0, accuracy: 0.0001)
+    }
+
+    /// A Reset further off than the Window is long, or already past, pins the
+    /// marker to an end rather than drawing it outside the bar.
+    func testElapsedFractionStaysOnTheBar() {
+        XCTAssertEqual(elapsed(resetIn: 20_000, duration: 18_000), 0)
+        XCTAssertEqual(elapsed(resetIn: -60, duration: 18_000), 1)
+    }
+
+    func testElapsedFractionNeedsAResetAndALength() {
+        XCTAssertNil(elapsed(resetIn: nil, duration: 18_000))
+        XCTAssertNil(elapsed(resetIn: 3_600, duration: nil))
+        XCTAssertNil(elapsed(resetIn: 3_600, duration: 0))
+    }
+
+    // MARK: Summary
+
+    func testSummaryIsTheShortestWindow() {
+        let windows = [
+            QuotaWindow(label: "week", usedPercent: 28, resetsAt: nil, duration: 604_800),
+            QuotaWindow(label: "5h", usedPercent: 19, resetsAt: nil, duration: 18_000),
+            QuotaWindow(label: "month", usedPercent: 50, resetsAt: nil),
+        ]
+        XCTAssertEqual(QuotaFormat.summaryWindow(of: windows)?.label, "5h")
+    }
+
+    func testSummaryWithoutAnyLengthIsTheFirstWindow() {
+        let windows = [
+            QuotaWindow(label: "month", usedPercent: 50, resetsAt: nil),
+            QuotaWindow(label: "period", usedPercent: 3, resetsAt: nil),
+        ]
+        XCTAssertEqual(QuotaFormat.summaryWindow(of: windows)?.label, "month")
+        XCTAssertNil(QuotaFormat.summaryWindow(of: []))
+    }
 }

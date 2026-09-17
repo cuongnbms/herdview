@@ -53,8 +53,9 @@ public enum QuotaEntry: Equatable, Sendable {
 }
 
 /// When a Provider is fetched. Only while the window is visible: every
-/// `pollInterval` on the tick, and at once when the window is shown, but not
-/// more than once every `showDebounce`.
+/// `pollInterval` on the tick, at once when the window is shown but not more
+/// than once every `showDebounce`, and at once when the user asks. A rate
+/// limit is waited out whatever the trigger.
 public enum QuotaSchedule {
     public static let pollInterval: TimeInterval = 5 * 60
     public static let showDebounce: TimeInterval = 60
@@ -62,12 +63,18 @@ public enum QuotaSchedule {
     public enum Trigger: Sendable {
         case tick
         case shown
+        case manual
     }
 
     public static func isDue(_ trigger: Trigger, lastStarted: Date?, rateLimitedUntil: Date?, now: Date) -> Bool {
         if let until = rateLimitedUntil, now < until { return false }
         guard let last = lastStarted else { return true }
-        let gap = trigger == .tick ? pollInterval : showDebounce
+        let gap: TimeInterval
+        switch trigger {
+        case .tick: gap = pollInterval
+        case .shown: gap = showDebounce
+        case .manual: return true
+        }
         return now.timeIntervalSince(last) >= gap
     }
 }

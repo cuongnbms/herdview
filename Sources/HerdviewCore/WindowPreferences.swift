@@ -6,6 +6,7 @@ import Foundation
 /// window floats above other apps.
 public struct WindowPreferences {
     private static let alwaysOnTopKey = "herdview.alwaysOnTop"
+    private static let quotaCollapsedKey = "herdview.quotaCollapsed"
 
     private let defaults: UserDefaults
 
@@ -18,5 +19,11 @@ public struct WindowPreferences {
     public var isAlwaysOnTop: Bool {
         get { defaults.bool(forKey: Self.alwaysOnTopKey) }
         nonmutating set { defaults.set(newValue, forKey: Self.alwaysOnTopKey) }
+    }
+
+    /// Expanded until the user folds the Quota card down to one line.
+    public var isQuotaCollapsed: Bool {
+        get { defaults.bool(forKey: Self.quotaCollapsedKey) }
+        nonmutating set { defaults.set(newValue, forKey: Self.quotaCollapsedKey) }
     }
 }

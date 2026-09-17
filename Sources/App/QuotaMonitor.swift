@@ -94,6 +94,7 @@ final class QuotaMonitor {
 
     private func cancelFetches() {
         for fetch in fetches.values { fetch.cancel() }
+        for provider in fetches.keys { store.setFetching(false, for: provider) }
         fetches.removeAll()
         fetchIDs.removeAll()
     }
@@ -105,6 +106,12 @@ final class QuotaMonitor {
         refresh(.shown)
     }
 
+    /// The user asked for fresh numbers: every Provider not already being
+    /// fetched is fetched now, unless it is waiting out a rate limit.
+    func refreshNow() {
+        refresh(.manual)
+    }
+
     private func refresh(_ trigger: QuotaSchedule.Trigger) {
         guard loop != nil, isWindowVisible() else { return }
         let now = Date()
@@ -114,6 +121,7 @@ final class QuotaMonitor {
             lastStarted[provider] = now
             let id = UUID()
             fetchIDs[provider] = id
+            store.setFetching(true, for: provider)
             fetches[provider] = Task { [weak self] in
                 defer { self?.endFetch(provider, id: id) }
                 await self?.fetch(provider)
@@ -128,6 +136,7 @@ final class QuotaMonitor {
         guard fetchIDs[provider] == id else { return }
         fetchIDs[provider] = nil
         fetches[provider] = nil
+        store.setFetching(false, for: provider)
     }
 
     private func fetch(_ provider: QuotaProvider) async {

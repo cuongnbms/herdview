@@ -45,11 +45,15 @@ public struct QuotaWindow: Equatable, Sendable {
     public let label: String
     public let usedPercent: Double
     public let resetsAt: Date?
+    /// How long the Window runs from start to Reset, when the Provider says or
+    /// its kind fixes it. `nil` rather than a guess — a month has no one length.
+    public let duration: TimeInterval?
 
-    public init(label: String, usedPercent: Double, resetsAt: Date?) {
+    public init(label: String, usedPercent: Double, resetsAt: Date?, duration: TimeInterval? = nil) {
         self.label = label
         self.usedPercent = min(100, max(0, usedPercent))
         self.resetsAt = resetsAt
+        self.duration = duration.flatMap { $0 > 0 ? $0 : nil }
     }
 }
 
