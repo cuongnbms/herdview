@@ -45,3 +45,23 @@ _Avoid_: Toast, alert, popup
 **Since**:
 The moment Herdview observed an Agent's current Status. Herdr does not report timestamps,
 so timers count from observation, not from the real change.
+
+**Provider**:
+An account one coding agent CLI is signed in to on this Mac: Claude, Codex, OpenCode Go,
+or Grok. A Provider belongs to no Host; Agents on every Host spend the same Provider's
+Quota.
+_Avoid_: Account, vendor, service
+
+**Quota**:
+How much of a Provider's plan has been used, as reported by the Provider. Made of one or
+more Windows. Herdview only reads it and never estimates it.
+_Avoid_: Usage, rate limit, credits
+
+**Window**:
+One limit within a Quota over a period — `5h`, `week`, `month`, or a period scoped to
+one model such as `week · Fable` — holding the percent used and its Reset. Always
+percent used, never percent remaining.
+_Avoid_: Bucket, limit, period
+
+**Reset**:
+The moment a Window's usage returns to zero, as the Provider reports it.
