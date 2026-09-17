@@ -25,6 +25,7 @@ struct AgentListView: View {
     private static let tick: TimeInterval = 0.5
 
     @ObservedObject var store: AgentStore
+    @ObservedObject var quotaStore: QuotaStore
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: Self.tick)) { context in
@@ -32,6 +33,7 @@ struct AgentListView: View {
                 // Host groups are separated by air rather than by a rule:
                 // the card edge already says where one host ends.
                 LazyVStack(alignment: .leading, spacing: Metrics.groupGap) {
+                    QuotaCard(store: quotaStore, now: context.date)
                     if let error = store.configError {
                         Notice(symbol: "exclamationmark.triangle.fill", text: error, tint: .red)
                             .padding(.horizontal, Metrics.textInset)
@@ -69,7 +71,7 @@ struct AgentListView: View {
     }
 }
 
-private enum Metrics {
+enum Metrics {
     /// Page margin, outside the cards.
     static let gutter: CGFloat = 14
     /// Air between one host's card and the next host's label.
@@ -129,7 +131,7 @@ private struct CardBackground: ViewModifier {
     }
 }
 
-private extension View {
+extension View {
     func cardSurface() -> some View { modifier(CardSurface()) }
     func cardBackground() -> some View { modifier(CardBackground()) }
 }

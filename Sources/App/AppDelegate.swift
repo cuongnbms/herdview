@@ -4,7 +4,9 @@ import HerdviewCore
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let store = AgentStore()
+    private let quotaStore = QuotaStore()
     private var monitor: Monitor?
+    private var quotaMonitor: QuotaMonitor?
     private var statusBar: StatusBarController?
     private var notifier: TransitionNotifier?
     private var mainWindow: MainWindowController?
@@ -22,7 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             store.configError = "\(ConfigLoader.defaultPath): \(error)"
         }
 
-        let window = MainWindowController(store: store, keepOnTopItem: menuItems?.keepOnTop)
+        let window = MainWindowController(store: store, quotaStore: quotaStore, keepOnTopItem: menuItems?.keepOnTop)
         mainWindow = window
         window.show()
 
@@ -45,10 +47,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let monitor = Monitor(config: config, store: store)
         self.monitor = monitor
         monitor.start()
+
+        // Its first tick fetches at once, since the window was shown above.
+        let quotaMonitor = QuotaMonitor(store: quotaStore) { [weak self] in
+            self?.mainWindow?.isVisible ?? false
+        }
+        self.quotaMonitor = quotaMonitor
+        window.onShow = { [weak quotaMonitor] in quotaMonitor?.windowShown() }
+        quotaMonitor.start()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         monitor?.stop()
+        quotaMonitor?.stop()
     }
 
     /// Closing the window hides it. The herd keeps being polled and the menu bar

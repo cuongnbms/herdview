@@ -30,7 +30,11 @@ final class MainWindowController: NSObject {
     private let preferences: WindowPreferences
     private let keepOnTopItem: NSMenuItem?
 
+    /// Called every time the window is shown, so the Quota can refresh.
+    var onShow: (() -> Void)?
+
     init(store: AgentStore,
+         quotaStore: QuotaStore,
          preferences: WindowPreferences = WindowPreferences(),
          keepOnTopItem: NSMenuItem? = nil) {
         self.store = store
@@ -51,7 +55,7 @@ final class MainWindowController: NSObject {
         window.titleVisibility = .hidden
         window.contentMinSize = NSSize(width: 360, height: 240)
         window.isReleasedWhenClosed = false
-        window.contentViewController = Self.backdrop(around: AgentListView(store: store))
+        window.contentViewController = Self.backdrop(around: AgentListView(store: store, quotaStore: quotaStore))
         // The window has to stop painting its own opaque grey before anything
         // behind it can show through the backdrop.
         window.isOpaque = false
@@ -82,6 +86,7 @@ final class MainWindowController: NSObject {
         } else {
             NSApp.activate(ignoringOtherApps: true)
         }
+        onShow?()
     }
 
     func hide() {
