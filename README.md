@@ -61,6 +61,29 @@ rather than leaving a stack behind — and no banner is shown while Herdview is 
 app in front, since the blinking row is already saying it. There is no switch for
 this in the app; the switch is System Settings › Notifications › Herdview.
 
+Above the hosts, a Quota card shows how much of each plan is used: Claude, Codex,
+OpenCode Go and Grok, one row each. Every Window — `5h`, `week`, `month`, or a
+per-model week like `week · Fable` — shows the percent used and how long until it
+resets, and its bar turns orange from 90%. The numbers come from each CLI's own
+sign-in on this Mac, never from the remote hosts, since every host spends the
+same accounts:
+
+| Provider | Credential read |
+|---|---|
+| Claude | Keychain item `Claude Code-credentials` |
+| Codex | `~/.codex/auth.json` |
+| OpenCode Go | `opencode-go` key in `~/.local/share/opencode/auth.json` |
+| Grok | `~/.grok/auth.json` |
+
+They are only read. Herdview never refreshes a token and never runs a CLI (see
+`docs/adr/0005`), so a CLI you have not used for a few hours may show
+"sign-in expired — run grok" with its last numbers dimmed; running that CLI
+once brings it back. A CLI that is not signed in shows "not signed in". Quota
+is fetched every 5 minutes, and when the window is shown, but only while the
+window is visible. The first read of Claude's Keychain item may ask for
+permission; choose Always Allow. None of these usage endpoints is documented,
+so a row that says "unreadable response" means a Provider changed its API.
+
 The menu bar item shows how many agents are `blocked`, in orange, and clicking it
 shows or hides the window. Closing the window does not quit the app: the herd
 keeps being polled, and the menu bar item or the Dock icon brings the window
