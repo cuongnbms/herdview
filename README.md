@@ -64,9 +64,10 @@ this in the app; the switch is System Settings › Notifications › Herdview.
 Above the hosts, a Quota card shows how much of each plan is used: Claude, Codex,
 OpenCode Go and Grok, one row each. Every Window — `5h`, `week`, `month`, or a
 per-model week like `week · Fable` — shows the percent used and how long until it
-resets, and its bar turns orange from 90%. A yellow tick on the bar marks how much
-of the Window's time has passed, so a bar that runs past its tick is being spent
-faster than the clock; a `month`, whose length varies, has no tick. Clicking
+resets. A yellow tick on the bar marks how much of the Window's time has passed:
+the bar is green while it stays behind the tick and turns orange once it runs past
+it, being spent faster than the clock, or reaches 90%. A `month`, whose length
+varies, has no tick and a grey bar until 90%. Clicking
 "Quota" folds the card to one line with each Provider's shortest Window, and the
 card stays folded next launch. The numbers come from each CLI's own
 sign-in on this Mac, never from the remote hosts, since every host spends the

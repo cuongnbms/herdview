@@ -34,6 +34,26 @@ public enum QuotaFormat {
         return min(1, max(0, 1 - remaining / duration))
     }
 
+    /// What colour a Window's bar is drawn in.
+    public enum Tone: Equatable, Sendable {
+        /// No length to pace against: the plain label colour.
+        case neutral
+        /// Used no more than the share of the Window's time that has passed.
+        case onPace
+        /// Used more than the time passed, or at `warningPercent` or above.
+        case warning
+    }
+
+    /// Green while the bar is at or behind the time marker, orange once it has
+    /// run past it. Near the limit is a warning whatever the clock says.
+    public static func tone(of window: QuotaWindow, now: Date) -> Tone {
+        if window.usedPercent >= warningPercent { return .warning }
+        guard let elapsed = elapsedFraction(resetsAt: window.resetsAt, duration: window.duration, now: now) else {
+            return .neutral
+        }
+        return window.usedPercent > elapsed * 100 ? .warning : .onPace
+    }
+
     /// The one Window a collapsed card shows for a Provider: the shortest, the
     /// one that runs out and comes back soonest. The first Window when none
     /// has a length.

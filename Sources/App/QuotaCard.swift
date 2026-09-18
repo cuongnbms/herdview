@@ -233,8 +233,10 @@ private struct ProviderIcon: View {
 /// passed, so a bar that has run past its tick is Quota spent faster than the
 /// clock. Only drawn when the Window's length is known.
 ///
-/// Warning colour goes on the bar only. Text stays on the label colours, as it
-/// does everywhere in this app, because orange text does not reach a readable
+/// The bar is green while it stays behind the tick and orange once it runs
+/// past it or nears the limit; grey when there is no tick to pace against.
+/// Colour goes on the bar only. Text stays on the label colours, as it does
+/// everywhere in this app, because orange text does not reach a readable
 /// contrast against a light window at this size; a Window near its limit says
 /// so with a heavier weight instead.
 private struct WindowGauge: View {
@@ -251,7 +253,7 @@ private struct WindowGauge: View {
             ZStack(alignment: .leading) {
                 Capsule().fill(Color.primary.opacity(0.1))
                 Capsule()
-                    .fill(warning ? Color(nsColor: .systemOrange) : Color.secondary)
+                    .fill(barColor)
                     .frame(width: Self.barWidth * window.usedPercent / 100)
             }
             .frame(width: Self.barWidth, height: 4)
@@ -267,6 +269,14 @@ private struct WindowGauge: View {
         .font(.system(size: 11).monospacedDigit())
         .lineLimit(1)
         .fixedSize()
+    }
+
+    private var barColor: Color {
+        switch QuotaFormat.tone(of: window, now: now) {
+        case .neutral: return .secondary
+        case .onPace: return Color(nsColor: .systemGreen)
+        case .warning: return Color(nsColor: .systemOrange)
+        }
     }
 
     @ViewBuilder private var timeMarker: some View {

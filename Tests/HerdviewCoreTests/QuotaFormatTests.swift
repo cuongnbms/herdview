@@ -67,6 +67,32 @@ final class QuotaFormatTests: XCTestCase {
         XCTAssertNil(elapsed(resetIn: 3_600, duration: 0))
     }
 
+    // MARK: Tone
+
+    private func tone(used: Double, resetIn seconds: TimeInterval?, duration: TimeInterval?) -> QuotaFormat.Tone {
+        let window = QuotaWindow(label: "5h", usedPercent: used,
+                                 resetsAt: seconds.map { now.addingTimeInterval($0) }, duration: duration)
+        return QuotaFormat.tone(of: window, now: now)
+    }
+
+    /// 80% of a 5h Window has passed: up to 80% used is on pace, past it is not.
+    func testToneIsOnPaceUntilTheBarPassesTheMarker() {
+        XCTAssertEqual(tone(used: 30, resetIn: 3_600, duration: 18_000), .onPace)
+        XCTAssertEqual(tone(used: 80, resetIn: 3_600, duration: 18_000), .onPace)
+        XCTAssertEqual(tone(used: 81, resetIn: 3_600, duration: 18_000), .warning)
+        XCTAssertEqual(tone(used: 1, resetIn: 18_000, duration: 18_000), .warning)
+    }
+
+    func testToneWarnsNearTheLimitWhateverTheClock() {
+        XCTAssertEqual(tone(used: 90, resetIn: 60, duration: 18_000), .warning)
+        XCTAssertEqual(tone(used: 95, resetIn: nil, duration: nil), .warning)
+    }
+
+    func testToneIsNeutralWithoutAMarker() {
+        XCTAssertEqual(tone(used: 50, resetIn: nil, duration: 18_000), .neutral)
+        XCTAssertEqual(tone(used: 50, resetIn: 3_600, duration: nil), .neutral)
+    }
+
     // MARK: Summary
 
     func testSummaryIsTheShortestWindow() {
