@@ -112,8 +112,8 @@ focuses it, not two.
 - **`Jumper`** — runs a Jump with `ProcessRunner`: reads the world, plans, focuses in Herdr,
   acts in cmux, activates cmux. One at a time.
 - **`AgentListView`** — tap, hover highlight and cursor on a row, calling `onJump(agent)`.
-- **`TransitionNotifier`** — puts the Agent's key in the Notification's `userInfo`, and on
-  a click looks the Agent up in `AgentStore` and Jumps.
+- **`TransitionNotifier`** — a Notification's request identifier is already the Agent's
+  key; on a click it looks that key up in `AgentStore` and Jumps.
 
 ## Testing
 
