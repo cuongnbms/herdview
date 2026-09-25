@@ -65,3 +65,19 @@ _Avoid_: Bucket, limit, period
 
 **Reset**:
 The moment a Window's usage returns to zero, as the Provider reports it.
+
+**Terminal Tab**:
+A cmux tab whose terminal is attached to a Session. A Session can have none, one, or
+several. Tabs in other terminal apps do not count.
+_Avoid_: Workspace, window, surface
+
+**Jump**:
+Clicking an Agent — its row or its Notification — to be taken to it: cmux in front, on a
+Terminal Tab of the Agent's Session, with Herdr focused on the Agent's pane. When the
+Session has no Terminal Tab, a Jump opens one.
+_Avoid_: Open, go to, attach
+
+**Matching Workspace**:
+The cmux workspace that belongs to a Session by name: its title lowercased with spaces
+turned into `-` equals the Session's name. It is where a Jump prefers a Terminal Tab and
+where it opens a new one.
