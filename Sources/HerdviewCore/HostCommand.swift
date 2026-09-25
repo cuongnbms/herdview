@@ -10,25 +10,25 @@ public struct HostCommand: Equatable, Sendable {
         self.arguments = arguments
     }
 
-    public static func sessionList(for host: HostConfig) -> HostCommand {
+    /// Wraps a Herdr command locally or over SSH for the host.
+    private static func herdrCommand(for host: HostConfig, arguments: [String]) -> HostCommand {
         if let ssh = host.ssh {
+            let remoteCommand = "\(host.herdrPath) \(arguments.joined(separator: " "))"
             return HostCommand(
                 executable: "/usr/bin/ssh",
-                arguments: ["-o", "BatchMode=yes", "-o", "ConnectTimeout=10", ssh, "\(host.herdrPath) session list --json"])
+                arguments: ["-o", "BatchMode=yes", "-o", "ConnectTimeout=10", ssh, remoteCommand])
         }
-        return HostCommand(executable: host.herdrPath, arguments: ["session", "list", "--json"])
+        return HostCommand(executable: host.herdrPath, arguments: arguments)
+    }
+
+    public static func sessionList(for host: HostConfig) -> HostCommand {
+        herdrCommand(for: host, arguments: ["session", "list", "--json"])
     }
 
     /// Moves Herdr's focus onto one Agent's pane. Focus lives on the Herdr
     /// server, so every client attached to the Session follows it — including
     /// one that attaches a moment later.
     public static func agentFocus(for host: HostConfig, session: String, paneId: String) -> HostCommand {
-        if let ssh = host.ssh {
-            return HostCommand(
-                executable: "/usr/bin/ssh",
-                arguments: ["-o", "BatchMode=yes", "-o", "ConnectTimeout=10", ssh,
-                            "\(host.herdrPath) --session \(session) agent focus \(paneId)"])
-        }
-        return HostCommand(executable: host.herdrPath, arguments: ["--session", session, "agent", "focus", paneId])
+        herdrCommand(for: host, arguments: ["--session", session, "agent", "focus", paneId])
     }
 }
