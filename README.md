@@ -47,6 +47,14 @@ as long as its agent is `blocked` (orange) or `done` (blue) — the two statuses
 that are asking for a person — so a glance at the window answers whether
 anything is waiting on you, and it keeps asking until you come. Every blinking
 row pulses in step.
+
+Clicking a row Jumps to its agent in [cmux](https://cmux.dev): cmux comes to the
+front on the tab attached to that agent's session, and Herdr focuses the agent's
+pane. The tab is found by the `herdr --session …` (or `herdr --remote … --session …`)
+process running in it. When no tab is attached to the session, one is opened in the
+cmux workspace named after the session ("Blue Matrix" matches `blue-matrix`), or in a
+new workspace of that name when there is none. A Jump that cannot finish beeps.
+
 The list scrolls and the host headings stay put as it does. The window remembers
 where you put it and how big you made it. `Keep on Top` in the Window menu
 (⌘T) makes it float above other apps' windows so the herd stays readable while
@@ -54,8 +62,9 @@ you work elsewhere; it is off until you ask for it, and remembered between
 launches.
 
 When an agent turns `blocked` or `done`, macOS also posts a notification: the
-same directory, session and title the row shows, and clicking it brings the
-window up. You are asked for permission the first time the app runs. One agent
+same directory, session and title the row shows, and clicking it Jumps to the
+agent just as clicking its row does (or brings the window up if the agent has
+gone). You are asked for permission the first time the app runs. One agent
 only ever holds one notification — going `blocked`, then `done`, replaces it
 rather than leaving a stack behind — and no banner is shown while Herdview is the
 app in front, since the blinking row is already saying it. There is no switch for

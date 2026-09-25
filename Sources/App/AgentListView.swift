@@ -159,7 +159,7 @@ private struct HostGroup: View {
                     if index > 0 {
                         RowSeparator()
                     }
-                    AgentRow(agent: agent, now: now)
+                    AgentRow(agent: agent, now: now) { store.jump(agent) }
                         .padding(.horizontal, Metrics.cardInset)
                 }
             }
@@ -229,6 +229,20 @@ private struct AgentRow: View {
 
     let agent: TrackedAgent
     let now: Date
+    let onJump: () -> Void
+
+    // `@State private var isHovering = false` would be the idiomatic spelling,
+    // but this Mac has no Xcode, and the Command Line Tools SDK's `@State` is a
+    // macro (`SwiftUIMacros.StateMacro`) whose plugin ships only with Xcode.app
+    // — the attribute fails to compile here. `State<Value>` itself is still a
+    // plain public `DynamicProperty` struct, so it is used directly instead;
+    // SwiftUI discovers it the same way, by walking the view's stored
+    // properties for anything conforming to `DynamicProperty`.
+    private var _isHovering = State(initialValue: false)
+    private var isHovering: Bool {
+        get { _isHovering.wrappedValue }
+        nonmutating set { _isHovering.wrappedValue = newValue }
+    }
 
     var body: some View {
         let text = AgentTitles.rowText(for: agent)
@@ -269,14 +283,24 @@ private struct AgentRow: View {
         .padding(.horizontal, Metrics.rowInset)
         .padding(.vertical, 8)
         .background(wash)
+        .background(hoverWash)
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onJump)
+        .onHover { hovering in
+            guard hovering != isHovering else { return }
+            isHovering = hovering
+            if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+        }
+        .onDisappear {
+            if isHovering { NSCursor.pop() }
+        }
         .help(tooltip(for: text))
     }
 
     /// A blocked or done row blinks for as long as it stays that way — it is
     /// asking for a person, and it keeps asking until someone comes. Every
-    /// other row is plain. Rows do not light up under the pointer, because
-    /// clicking one does nothing and a hover highlight would promise that it
-    /// did.
+    /// other row is plain. Clicking a row Jumps to its Agent, so a row lights
+    /// up faintly under the pointer (`hoverWash`) to say it can be clicked.
     ///
     /// The inset is applied out here rather than inside the wash so that the
     /// layer being animated fills its own view exactly, with nothing between
@@ -285,6 +309,14 @@ private struct AgentRow: View {
     /// enough to keep two blinking neighbours apart.
     private var wash: some View {
         BlinkWash(status: agent.status)
+            .padding(.vertical, Metrics.washInset)
+    }
+
+    /// The faint wash under the pointer. Same shape and inset as the blink, so
+    /// a hovered row that is also blinking reads as one surface, not two.
+    private var hoverWash: some View {
+        RoundedRectangle(cornerRadius: Metrics.washRadius, style: .continuous)
+            .fill(Color.primary.opacity(isHovering ? 0.06 : 0))
             .padding(.vertical, Metrics.washInset)
     }
 
