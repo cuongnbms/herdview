@@ -10,7 +10,10 @@ public struct HostCommand: Equatable, Sendable {
         self.arguments = arguments
     }
 
-    /// Wraps a Herdr command locally or over SSH for the host.
+    /// Wraps a Herdr command locally or over SSH for the host. Over SSH the
+    /// arguments are joined into one shell string unquoted, which relies on
+    /// Herdr's naming (Session directory names, pane ids like `w1:p2`);
+    /// nothing is escaped.
     private static func herdrCommand(for host: HostConfig, arguments: [String]) -> HostCommand {
         if let ssh = host.ssh {
             let remoteCommand = "\(host.herdrPath) \(arguments.joined(separator: " "))"

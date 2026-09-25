@@ -8,11 +8,21 @@ public enum JumpPlan: Equatable, Sendable {
     case newTab(workspace: String, command: String)
     /// Create a workspace named after the Session, running `command` in it.
     case newWorkspace(name: String, command: String)
+
+    /// Whether the plan makes something new in cmux rather than focusing what
+    /// is there.
+    public var creates: Bool {
+        if case .focus = self { return false }
+        return true
+    }
 }
 
 /// Decides where a Jump lands. Pure: it is handed the Herdr clients `ps` found
 /// and the tree cmux reported, and never looks at either itself.
 public enum JumpPlanner {
+    /// A Terminal Tab in the Matching Workspace wins; otherwise the first in
+    /// tree order. cmux can report one tty on two surfaces (a restored surface
+    /// keeps a stale tty), and the planner does not try to tell them apart.
     public static func plan(host: HostConfig, session: String, attachments: [HerdrAttachment],
                             tree: CmuxTree, localHerdrPath: String) -> JumpPlan {
         let ttys = Set(attachments.filter { $0.session == session && $0.remote == host.ssh }.map(\.tty))
@@ -47,7 +57,9 @@ public enum JumpPlanner {
     }
 
     /// The command a new Terminal Tab runs. It always runs on this Mac, so it is
-    /// the local Herdr binary even for a remote Session.
+    /// the local Herdr binary even for a remote Session. The Session name goes
+    /// into the string unquoted, which relies on Herdr's naming (Session
+    /// directory names); nothing is escaped.
     public static func attachCommand(host: HostConfig, session: String, localHerdrPath: String) -> String {
         if let ssh = host.ssh {
             return "\(localHerdrPath) --remote \(ssh) --session \(session)"

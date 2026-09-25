@@ -46,6 +46,28 @@ final class JumpPlannerTests: XCTestCase {
                        .focus(surface: "surface:45"))
     }
 
+    func testOneTtyOnTwoSurfacesTakesTheFirstInTreeOrder() {
+        // cmux can report a restored surface with a stale tty that another
+        // surface now holds; the planner does not tell them apart.
+        let tree = CmuxTree(workspaces: [
+            .init(ref: "workspace:1", title: "Generals", surfaces: [.init(ref: "surface:3", tty: "ttys000")]),
+            .init(ref: "workspace:2", title: "Blue Matrix", surfaces: [.init(ref: "surface:9", tty: "ttys000")]),
+        ])
+        let attachments = [HerdrAttachment(tty: "ttys000", remote: "devtuf", session: "carex")]
+        XCTAssertEqual(JumpPlanner.plan(host: devtuf, session: "carex", attachments: attachments, tree: tree, localHerdrPath: herdr),
+                       .focus(surface: "surface:3"))
+    }
+
+    func testOneTtyOnTwoSurfacesPrefersTheOneInTheMatchingWorkspace() {
+        let tree = CmuxTree(workspaces: [
+            .init(ref: "workspace:1", title: "Generals", surfaces: [.init(ref: "surface:3", tty: "ttys000")]),
+            .init(ref: "workspace:2", title: "Carex", surfaces: [.init(ref: "surface:9", tty: "ttys000")]),
+        ])
+        let attachments = [HerdrAttachment(tty: "ttys000", remote: "devtuf", session: "carex")]
+        XCTAssertEqual(JumpPlanner.plan(host: devtuf, session: "carex", attachments: attachments, tree: tree, localHerdrPath: herdr),
+                       .focus(surface: "surface:9"))
+    }
+
     func testRemoteClientMatchesOnlyItsOwnSSHValue() {
         let attachments = [HerdrAttachment(tty: "ttys000", remote: "devtuf", session: "carex")]
         let other = HostConfig(name: "devtuf", ssh: "cuongnb@devtuf", herdrPath: "/x/herdr", pollSeconds: 2)
