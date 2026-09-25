@@ -17,6 +17,10 @@ final class AgentStore: ObservableObject {
     /// overwrites the first before anyone reads it.
     let transitions = PassthroughSubject<[Transition], Never>()
 
+    /// Set by the app delegate to the `Jumper`. The row and the notifier call
+    /// `jump(_:)` and never learn how a Jump is done.
+    var jumpAction: ((TrackedAgent) -> Void)?
+
     private var bySession: [String: [TrackedAgent]] = [:]
 
     func setHostOrder(_ names: [String]) {
@@ -49,6 +53,14 @@ final class AgentStore: ObservableObject {
 
     func agents(forHost host: String) -> [TrackedAgent] {
         agents.filter { $0.host == host }
+    }
+
+    func jump(_ agent: TrackedAgent) {
+        jumpAction?(agent)
+    }
+
+    func agent(withKey key: String) -> TrackedAgent? {
+        agents.first { $0.key == key }
     }
 
     private func rebuild() {

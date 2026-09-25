@@ -72,20 +72,26 @@ final class TransitionNotifier: NSObject {
 }
 
 extension TransitionNotifier: UNUserNotificationCenterDelegate {
-    /// Clicking a banner asks to see the agent it is about, so bring the window
-    /// up. There is nothing finer to go to — the window is one list — so it
-    /// opens on the list with the blinking row already in it.
+    /// Clicking a banner Jumps to the Agent it is about. Its request identifier
+    /// is the Agent's key (see `TransitionNotice.identifier`). An Agent that has
+    /// gone since the banner was posted has nowhere to Jump to, so the window
+    /// comes up instead, as it always did.
     ///
     /// `nonisolated` because the centre calls its delegate without knowing
-    /// about actors; the work itself hops to the main actor, where the window
+    /// about actors; the work itself hops to the main actor, where the store
     /// lives.
     nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
+        let key = response.notification.request.identifier
         Task { @MainActor in
-            onOpen()
+            if let agent = store.agent(withKey: key) {
+                store.jump(agent)
+            } else {
+                onOpen()
+            }
             completionHandler()
         }
     }

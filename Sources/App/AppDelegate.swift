@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var quotaMonitor: QuotaMonitor?
     private var statusBar: StatusBarController?
     private var notifier: TransitionNotifier?
+    private var jumper: Jumper?
     private var mainWindow: MainWindowController?
     private var menuItems: MainMenu.Items?
 
@@ -38,6 +39,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // somewhere to go. The first poll of a session has no previous
         // snapshot to compare against, so it produces no transitions and no
         // burst of banners at launch.
+        let jumper = Jumper(hosts: config.hosts)
+        self.jumper = jumper
+        store.jumpAction = { [weak jumper] agent in jumper?.jump(to: agent) }
+
         let notifier = TransitionNotifier(store: store) { [weak self] in
             self?.mainWindow?.show()
         }
